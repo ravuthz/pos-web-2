@@ -1,16 +1,57 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Pencil, Plus, Trash2, X } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
 import { DataTable } from '@/components/ui/DataTable';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatCard } from '@/components/ui/StatCard';
-import { ErrorState, LoadingState } from '@/components/ui/States';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { expenseService } from '@/services/expense';
 import { useBranchStore } from '@/store/branch';
+import { extractApiError } from '@/lib/api';
 import { formatCurrency, formatDateTime, formatNumber } from '@/lib/utils';
 import type { Expense } from '@/types/api';
 
+const expenseCategories = [
+  'rent',
+  'utilities',
+  'salaries',
+  'supplies',
+  'maintenance',
+  'marketing',
+  'purchase_order',
+  'other'
+] as const;
+
+interface ExpenseFormState {
+  category: (typeof expenseCategories)[number];
+  amount: string;
+  expense_number: string;
+  receipt_number: string;
+  expense_date: string;
+  payment_method: 'cash' | 'card' | 'transfer' | 'check';
+  description: string;
+  notes: string;
+}
+
+const emptyForm: ExpenseFormState = {
+  category: 'other',
+  amount: '0',
+  expense_number: '',
+  receipt_number: '',
+  expense_date: new Date().toISOString().slice(0, 10),
+  payment_method: 'cash',
+  description: '',
+  notes: ''
+};
+
 export function ExpensesPage() {
+  const queryClient = useQueryClient();
   const selectedBranchId = useBranchStore((state) => state.selectedBranchId);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [form, setForm] = useState<ExpenseFormState>(emptyForm);
 
   const expensesQuery = useQuery({
     queryKey: ['expenses', selectedBranchId],
@@ -20,6 +61,80 @@ export function ExpensesPage() {
   const summaryQuery = useQuery({
     queryKey: ['expenses-summary', selectedBranchId],
     queryFn: () => expenseService.getSummary({ branch_id: selectedBranchId ?? undefined })
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async (payload: ExpenseFormState) => {
+      if (!selectedBranchId) {
+        throw new Error('Select a branch before creating an expense.');
+      }
+
+      const data = {
+        branch_id: selectedBranchId,
+        category: payload.category,
+        amount: Number(payload.amount),
+        expense_number: payload.expense_number.trim(),
+        receipt_number: payload.receipt_number.trim() || undefined,
+        expense_date: payload.expense_date,
+        payment_method: payload.payment_method,
+        description: payload.description.trim() || undefined,
+        notes: payload.notes.trim() || undefined
+      };
+
+      if (editingExpense) {
+        return expenseService.update(editingExpense.id, data);
+      }
+
+      return expenseService.create(data);
+    },
+    onSuccess: async () => {
+      toast.success(editingExpense ? 'Expense updated.' : 'Expense created.');
+      resetEditor();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['expenses'] }),
+        queryClient.invalidateQueries({ queryKey: ['expenses-summary'] }),
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      ]);
+    },
+    onError: (error) => {
+      toast.error(extractApiError(error));
+    }
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: (id: number) => expenseService.approve(id),
+    onSuccess: async () => {
+      toast.success('Expense approved.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['expenses'] }),
+        queryClient.invalidateQueries({ queryKey: ['expenses-summary'] })
+      ]);
+    },
+    onError: (error) => toast.error(extractApiError(error))
+  });
+
+  const payMutation = useMutation({
+    mutationFn: (id: number) => expenseService.markAsPaid(id, {}),
+    onSuccess: async () => {
+      toast.success('Expense marked as paid.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['expenses'] }),
+        queryClient.invalidateQueries({ queryKey: ['expenses-summary'] })
+      ]);
+    },
+    onError: (error) => toast.error(extractApiError(error))
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => expenseService.delete(id),
+    onSuccess: async () => {
+      toast.success('Expense deleted.');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['expenses'] }),
+        queryClient.invalidateQueries({ queryKey: ['expenses-summary'] })
+      ]);
+    },
+    onError: (error) => toast.error(extractApiError(error))
   });
 
   if (expensesQuery.isLoading || summaryQuery.isLoading) {
@@ -41,12 +156,228 @@ export function ExpensesPage() {
     pending?: { total?: number; count?: number };
   };
 
+  function resetEditor() {
+    setIsEditorOpen(false);
+    setEditingExpense(null);
+    setForm(emptyForm);
+  }
+
+  function startCreate() {
+    setEditingExpense(null);
+    setForm({
+      ...emptyForm,
+      expense_number: `EXP-${Date.now()}`
+    });
+    setIsEditorOpen(true);
+  }
+
+  function startEdit(expense: Expense) {
+    setEditingExpense(expense);
+    setForm({
+      category: expense.category as ExpenseFormState['category'],
+      amount: String(expense.amount ?? 0),
+      expense_number: expense.expense_number ?? '',
+      receipt_number: expense.receipt_number ?? '',
+      expense_date: expense.expense_date ?? new Date().toISOString().slice(0, 10),
+      payment_method: expense.payment_method ?? 'cash',
+      description: expense.description ?? '',
+      notes: expense.notes ?? ''
+    });
+    setIsEditorOpen(true);
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Expenses"
-        subtitle="Review paid, pending, and branch-level expense activity."
+        subtitle="Create, review, approve, and settle branch expenses."
+        actions={
+          <button type="button" className="btn btn-primary" onClick={startCreate}>
+            <Plus className="h-4 w-4" />
+            New expense
+          </button>
+        }
       />
+
+      {isEditorOpen ? (
+        <section className="card space-y-4">
+          <div className="card-header mb-0">
+            <div>
+              <h2 className="text-lg font-semibold text-surface-900">
+                {editingExpense ? 'Edit expense' : 'Create expense'}
+              </h2>
+              <p className="text-sm text-surface-500">
+                {editingExpense
+                  ? 'Only pending expenses can be updated.'
+                  : 'Create a new expense for the selected branch.'}
+              </p>
+            </div>
+            <button type="button" className="btn btn-ghost btn-icon" onClick={resetEditor}>
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {!selectedBranchId ? (
+            <EmptyState
+              title="Branch required"
+              message="Pick a branch from the header before creating an expense."
+            />
+          ) : (
+            <form
+              className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                saveMutation.mutate(form);
+              }}
+            >
+              <div>
+                <label className="label" htmlFor="expense-number">
+                  Expense number
+                </label>
+                <input
+                  id="expense-number"
+                  className="input"
+                  value={form.expense_number}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, expense_number: event.target.value }))
+                  }
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="label" htmlFor="expense-category">
+                  Category
+                </label>
+                <select
+                  id="expense-category"
+                  className="input"
+                  value={form.category}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      category: event.target.value as ExpenseFormState['category']
+                    }))
+                  }
+                >
+                  {expenseCategories.map((category) => (
+                    <option key={category} value={category}>
+                      {category.replace(/_/g, ' ')}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="label" htmlFor="expense-amount">
+                  Amount
+                </label>
+                <input
+                  id="expense-amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="input"
+                  value={form.amount}
+                  onChange={(event) => setForm((current) => ({ ...current, amount: event.target.value }))}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="label" htmlFor="expense-date">
+                  Expense date
+                </label>
+                <input
+                  id="expense-date"
+                  type="date"
+                  className="input"
+                  value={form.expense_date}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, expense_date: event.target.value }))
+                  }
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="label" htmlFor="expense-payment-method">
+                  Payment method
+                </label>
+                <select
+                  id="expense-payment-method"
+                  className="input"
+                  value={form.payment_method}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      payment_method: event.target.value as ExpenseFormState['payment_method']
+                    }))
+                  }
+                >
+                  <option value="cash">Cash</option>
+                  <option value="card">Card</option>
+                  <option value="transfer">Transfer</option>
+                  <option value="check">Check</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="label" htmlFor="expense-receipt">
+                  Receipt number
+                </label>
+                <input
+                  id="expense-receipt"
+                  className="input"
+                  value={form.receipt_number}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, receipt_number: event.target.value }))
+                  }
+                />
+              </div>
+
+              <div className="md:col-span-2 xl:col-span-3">
+                <label className="label" htmlFor="expense-description">
+                  Description
+                </label>
+                <textarea
+                  id="expense-description"
+                  className="input min-h-24"
+                  value={form.description}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, description: event.target.value }))
+                  }
+                />
+              </div>
+
+              <div className="md:col-span-2 xl:col-span-3">
+                <label className="label" htmlFor="expense-notes">
+                  Notes
+                </label>
+                <textarea
+                  id="expense-notes"
+                  className="input min-h-28"
+                  value={form.notes}
+                  onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
+                />
+              </div>
+
+              <div className="md:col-span-2 xl:col-span-3 flex flex-wrap gap-3">
+                <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
+                  {saveMutation.isPending
+                    ? 'Saving...'
+                    : editingExpense
+                      ? 'Update expense'
+                      : 'Create expense'}
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={resetEditor}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+        </section>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard
@@ -79,17 +410,17 @@ export function ExpensesPage() {
               cell: (expense) => (
                 <div>
                   <p className="font-medium text-surface-900">{expense.expense_number}</p>
-                  <p className="text-xs text-surface-500">{expense.category}</p>
+                  <p className="text-xs text-surface-500">{expense.category_label ?? expense.category}</p>
                 </div>
               )
             },
             {
-              header: 'Vendor',
-              cell: (expense) => expense.vendor?.name ?? '-'
-            },
-            {
               header: 'Amount',
               cell: (expense) => formatCurrency(expense.amount ?? 0)
+            },
+            {
+              header: 'Payment',
+              cell: (expense) => expense.payment_method_label ?? expense.payment_method ?? '-'
             },
             {
               header: 'Date',
@@ -98,6 +429,52 @@ export function ExpensesPage() {
             {
               header: 'Status',
               cell: (expense) => <StatusBadge value={expense.status} />
+            },
+            {
+              header: 'Actions',
+              cell: (expense) => (
+                <div className="flex flex-wrap items-center gap-2">
+                  {expense.is_editable ? (
+                    <button type="button" className="btn btn-secondary btn-icon" onClick={() => startEdit(expense)}>
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                  ) : null}
+                  {expense.is_approvable ? (
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => approveMutation.mutate(expense.id)}
+                      disabled={approveMutation.isPending}
+                    >
+                      Approve
+                    </button>
+                  ) : null}
+                  {expense.can_mark_as_paid ? (
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-sm"
+                      onClick={() => payMutation.mutate(expense.id)}
+                      disabled={payMutation.isPending}
+                    >
+                      Mark paid
+                    </button>
+                  ) : null}
+                  {expense.is_editable ? (
+                    <button
+                      type="button"
+                      className="btn btn-danger btn-icon"
+                      onClick={() => {
+                        if (window.confirm(`Delete expense "${expense.expense_number}"?`)) {
+                          deleteMutation.mutate(expense.id);
+                        }
+                      }}
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  ) : null}
+                </div>
+              )
             }
           ]}
         />

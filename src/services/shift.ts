@@ -33,8 +33,8 @@ export const shiftService = {
   },
 
   async close(id: number, data: {
-    closing_cash_float: number;
-    closing_cash_float_khr?: number;
+    actual_cash?: number;
+    actual_cash_khr?: number;
     closing_notes?: string;
   }) {
     const response = await api.post<{ data: Shift }>(`/shifts/${id}/close`, data);

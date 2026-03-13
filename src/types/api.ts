@@ -51,6 +51,7 @@ export interface User {
   branch?: Branch;
   branches?: Branch[];
   primary_branch?: Branch | null;
+  branch_ids?: number[];
   created_at?: string;
   updated_at?: string;
 }
@@ -88,6 +89,7 @@ export interface Branch {
 export interface Product {
   id: number;
   branch_id?: number;
+  vendor_id?: number | null;
   name: string;
   code?: string;
   sku?: string;
@@ -95,6 +97,7 @@ export interface Product {
   description?: string;
   category_id: number;
   category?: Category;
+  vendors?: Vendor[];
   image?: string;
   image_url?: string;
   selling_price: number;
@@ -104,6 +107,7 @@ export interface Product {
   track_expiry?: boolean;
   expiry_date?: string | null;
   is_track_stock?: boolean;
+  low_stock_alert?: number;
   low_stock_threshold?: number;
   stock?: Stock;
   units?: ProductUnit[];
@@ -141,10 +145,11 @@ export interface Category {
   id: number;
   name: string;
   code?: string;
+  branch_id?: number;
   parent_id?: number;
   description?: string;
   image_url?: string;
-  is_active: boolean;
+  is_active?: boolean;
   sort_order?: number;
   children?: Category[];
   created_at?: string;
@@ -156,13 +161,16 @@ export interface Customer {
   id: number;
   name: string;
   code?: string;
+  display_name?: string;
   email?: string;
   phone?: string;
   address?: string;
   customer_type?: 'individual' | 'business';
   tax_number?: string;
   credit_limit?: number;
-  is_active: boolean;
+  is_active?: boolean;
+  is_walk_in?: boolean;
+  sales_count?: number;
   created_at?: string;
   updated_at?: string;
 }
@@ -248,15 +256,23 @@ export interface PurchaseOrder {
   vendor?: Vendor;
   branch_id: number;
   branch?: Branch;
+  buyer_id?: number;
+  buyer?: User;
   order_date: string;
   expected_date?: string;
-  subtotal: number;
-  discount_amount: number;
-  tax_amount: number;
-  total: number;
+  subtotal?: number;
+  discount_amount?: number;
+  tax_amount?: number;
+  total?: number;
+  total_amount?: number;
   notes?: string;
   status: 'draft' | 'sent' | 'received' | 'cancelled';
+  status_label?: string;
+  is_editable?: boolean;
+  is_receivable?: boolean;
+  is_cancellable?: boolean;
   items?: PurchaseOrderItem[];
+  products?: PurchaseOrderItem[];
   created_at?: string;
   updated_at?: string;
 }
@@ -267,11 +283,21 @@ export interface PurchaseOrderItem {
   product_id: number;
   product?: Product;
   product_name: string;
-  quantity: number;
-  unit_price: number;
-  discount_amount: number;
+  product_code?: string;
+  quantity?: number;
+  quantity_ordered?: number;
+  unit_price?: number;
+  unit_cost?: number;
+  discount_amount?: number;
   line_total: number;
   quantity_received?: number;
+  pending_quantity?: number;
+  receival_status?: string;
+  receival_status_label?: string;
+  product_unit_id?: number | null;
+  product_unit_name?: string | null;
+  base_quantity_ordered?: number;
+  base_quantity_received?: number;
 }
 
 export interface Vendor {
@@ -283,7 +309,12 @@ export interface Vendor {
   address?: string;
   contact_person?: string;
   tax_number?: string;
-  is_active: boolean;
+  payment_terms?: string;
+  credit_days?: number;
+  notes?: string;
+  tg_id?: number;
+  status?: string;
+  is_active?: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -296,14 +327,19 @@ export interface StockMovement {
   branch_id: number;
   branch?: Branch;
   movement_type: 'adjustment' | 'sale' | 'return' | 'transfer' | 'purchase';
-  quantity: number;
+  movement_type_label?: string;
+  product_name?: string;
+  product_code?: string;
+  quantity?: number;
+  quantity_change?: number;
   quantity_before: number;
   quantity_after: number;
   reference_type?: string;
   reference_id?: number;
   notes?: string;
-  created_by?: number;
+  created_by?: number | { id: number; name: string } | null;
   user?: User;
+  movement_date?: string;
   created_at: string;
 }
 
@@ -314,16 +350,27 @@ export interface Expense {
   branch_id: number;
   branch?: Branch;
   category: string;
+  category_label?: string;
   amount: number;
-  currency: string;
+  currency?: string;
   expense_date: string;
+  payment_method?: 'cash' | 'card' | 'transfer' | 'check';
+  payment_method_label?: string;
+  receipt_number?: string;
   description?: string;
   vendor_id?: number;
   vendor?: Vendor;
   status: 'pending' | 'approved' | 'rejected' | 'paid';
   notes?: string;
+  image?: string | null;
+  reason?: string | null;
+  is_editable?: boolean;
+  is_approvable?: boolean;
+  can_mark_as_paid?: boolean;
   created_by?: number;
   user?: User;
+  recorded_by?: number;
+  recorded_by_user?: User;
   created_at?: string;
   updated_at?: string;
 }
@@ -382,6 +429,7 @@ export interface Shift {
   total_expenses?: number;
   opening_notes?: string;
   closing_notes?: string;
+  expected_cash_float?: number;
   created_at?: string;
   updated_at?: string;
 }

@@ -10,8 +10,7 @@ export const stockMovementService = {
   async adjustStock(data: {
     product_id: number;
     branch_id: number;
-    quantity: number;
-    movement_type: string;
+    quantity_change: number;
     notes?: string;
   }) {
     const response = await api.post<{ data: StockMovement }>('/stock-movements/adjust', data);
