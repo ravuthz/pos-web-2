@@ -31,7 +31,7 @@ export function CrudTabs({ activeTabId, tabs, onSelectTab, onCloseTab, onCreateT
         key={tab.id}
         type="button"
         onClick={() => onSelectTab(tab.id)}
-        className={`inline-flex min-w-0 shrink-0 items-center gap-2 rounded-2xl px-3 py-2 text-sm font-medium transition ${
+        className={`inline-flex min-w-0 shrink-0 items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
           isActive ? 'bg-primary-700 text-white shadow-soft' : 'bg-white text-surface-700 hover:bg-surface-100'
         }`}
       >
@@ -66,13 +66,13 @@ export function CrudTabs({ activeTabId, tabs, onSelectTab, onCloseTab, onCreateT
 
   return (
     <div className="overflow-hidden rounded-[2rem] border border-surface-200 bg-white/90 shadow-soft backdrop-blur">
-      <div className="flex gap-2 overflow-x-auto border-b border-surface-200 bg-surface-50/80 p-3 scrollbar-hide">
+      <div className="flex gap-2 overflow-x-auto border-b border-surface-200 bg-surface-50/80 px-4 py-3 md:px-6 scrollbar-hide">
         {mainTab ? renderTab(mainTab) : null}
         {!createTab && onCreateTab ? (
           <button
             type="button"
             onClick={onCreateTab}
-            className="inline-flex shrink-0 items-center gap-2 rounded-2xl bg-white px-3 py-2 text-sm font-medium text-surface-700 transition hover:bg-surface-100"
+            className="inline-flex shrink-0 items-center gap-2 rounded-2xl bg-white px-3 py-2.5 text-sm font-medium text-surface-700 transition hover:bg-surface-100"
             aria-label="Open new form tab"
             title="New"
           >
@@ -86,7 +86,7 @@ export function CrudTabs({ activeTabId, tabs, onSelectTab, onCloseTab, onCreateT
               key={tab.id}
               type="button"
               onClick={() => onSelectTab(tab.id)}
-              className={`inline-flex min-w-0 shrink-0 items-center gap-2 rounded-2xl px-3 py-2 text-sm font-medium transition ${
+              className={`inline-flex min-w-0 shrink-0 items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
                 tab.id === activeTabId
                   ? 'bg-primary-700 text-white shadow-soft'
                   : 'bg-white text-surface-700 hover:bg-surface-100'

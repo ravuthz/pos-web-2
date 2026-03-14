@@ -55,7 +55,7 @@
   }
 
   .btn-icon {
-    @apply p-2.5 min-w-11;
+    @apply rounded-2xl p-2.5 min-w-11;
   }
 
   .input {

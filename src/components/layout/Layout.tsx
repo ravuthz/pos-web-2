@@ -87,6 +87,10 @@ const navItems: NavGroup[] = [
 ];
 
 const collapsibleGroups = new Set(['Inventory', 'People']);
+const navGroupIcons: Partial<Record<NavGroup['label'], LucideIcon>> = {
+  Inventory: Boxes,
+  People: Users
+};
 const flatNavItems = navItems.flatMap((group) => group.items);
 const headerAccentOptions: Array<{ bgClass: string; textClass: string }> = [
   { bgClass: 'bg-rose-100', textClass: 'text-rose-700' },
@@ -97,16 +101,25 @@ const headerAccentOptions: Array<{ bgClass: string; textClass: string }> = [
   { bgClass: 'bg-fuchsia-100', textClass: 'text-fuchsia-700' }
 ];
 
+function getInitialExpandedGroups(pathname: string) {
+  return {
+    Inventory: navItems
+      .find((group) => group.label === 'Inventory')
+      ?.items.some((item) => item.to === pathname) ?? false,
+    People:
+      navItems.find((group) => group.label === 'People')?.items.some((item) => item.to === pathname) ?? false
+  };
+}
+
 export function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const setSelectedBranch = useBranchStore((state) => state.setSelectedBranch);
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
-    Inventory: false,
-    People: false
-  });
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() =>
+    getInitialExpandedGroups(location.pathname)
+  );
   const [headerAccentIndex, setHeaderAccentIndex] = useState(0);
   const headerSubtitle = [user?.role?.name, user?.username].filter(Boolean).join(' - ') || 'Point of sale workspace';
 
@@ -139,6 +152,26 @@ export function Layout() {
     });
   }, [location.pathname]);
 
+  useEffect(() => {
+    setExpandedGroups((current) => {
+      let didChange = false;
+      const next = { ...current };
+
+      for (const group of navItems) {
+        if (!collapsibleGroups.has(group.label)) {
+          continue;
+        }
+
+        if (group.items.some((item) => item.to === location.pathname) && !current[group.label]) {
+          next[group.label] = true;
+          didChange = true;
+        }
+      }
+
+      return didChange ? next : current;
+    });
+  }, [location.pathname]);
+
   const ActiveIcon = activeNavItem?.icon ?? BarChart3;
   const headerAccent = headerAccentOptions[headerAccentIndex];
 
@@ -149,57 +182,66 @@ export function Layout() {
           <div className="md:flex md:h-full md:min-h-0 md:flex-1 md:pr-1">
             <div className="rounded-3xl border border-surface-200 bg-white/90 p-3 shadow-soft backdrop-blur md:flex md:min-h-0 md:flex-1 md:flex-col">
               <nav className="space-y-4 md:min-h-0 md:flex-1 md:overflow-y-auto">
-                {navItems.map((group) => (
-                  <section key={group.label} className="space-y-2">
-                    {collapsibleGroups.has(group.label) ? (
-                      <button
-                        type="button"
-                        className="flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-surface-400 transition hover:bg-surface-100"
-                        onClick={() =>
-                          setExpandedGroups((current) => ({
-                            ...current,
-                            [group.label]: !current[group.label]
-                          }))
-                        }
-                      >
-                        <span>{group.label}</span>
-                        {expandedGroups[group.label] ? (
-                          <ChevronDown className="h-4 w-4" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4" />
-                        )}
-                      </button>
-                    ) : (
-                      <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-surface-400">
-                        {group.label}
-                      </p>
-                    )}
+                {navItems.map((group) => {
+                  const isCollapsibleGroup = collapsibleGroups.has(group.label);
+                  const isGroupExpanded = expandedGroups[group.label];
+                  const GroupIcon = navGroupIcons[group.label];
 
-                    {collapsibleGroups.has(group.label) && !expandedGroups[group.label] ? null : (
-                      <div className="grid gap-1">
-                        {group.items.map((item) => {
-                          const Icon = item.icon;
-                          const isActive = location.pathname === item.to;
+                  return (
+                    <section key={group.label} className="space-y-2">
+                      {isCollapsibleGroup ? (
+                        <button
+                          type="button"
+                          className="flex w-full items-center justify-between rounded-2xl px-3 py-2.5 text-left text-sm font-medium text-surface-700 transition hover:bg-surface-100"
+                          onClick={() =>
+                            setExpandedGroups((current) => ({
+                              ...current,
+                              [group.label]: !current[group.label]
+                            }))
+                          }
+                        >
+                          <span className="flex items-center gap-3">
+                            {GroupIcon ? <GroupIcon className="h-4 w-4" /> : null}
+                            <span>{group.label}</span>
+                          </span>
+                          {isGroupExpanded ? (
+                            <ChevronDown className="h-4 w-4 text-surface-400" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 text-surface-400" />
+                          )}
+                        </button>
+                      ) : (
+                        <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-surface-400">
+                          {group.label}
+                        </p>
+                      )}
 
-                          return (
-                            <Link
-                              key={item.to}
-                              to={item.to}
-                              className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
-                                isActive
-                                  ? 'bg-primary-700 text-white shadow-soft hover:bg-primary-700/70'
-                                  : 'text-surface-700 hover:bg-surface-100'
-                              }`}
-                            >
-                              <Icon className="h-4 w-4" />
-                              <span>{item.label}</span>
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </section>
-                ))}
+                      {isCollapsibleGroup && !isGroupExpanded ? null : (
+                        <div className={`grid gap-1 ${isCollapsibleGroup ? 'pl-4' : ''}`}>
+                          {group.items.map((item) => {
+                            const Icon = item.icon;
+                            const isActive = location.pathname === item.to;
+
+                            return (
+                              <Link
+                                key={item.to}
+                                to={item.to}
+                                className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
+                                  isActive
+                                    ? 'bg-primary-700 text-white shadow-soft hover:bg-primary-700/70'
+                                    : 'text-surface-700 hover:bg-surface-100'
+                                }`}
+                              >
+                                <Icon className="h-4 w-4" />
+                                <span>{item.label}</span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </section>
+                  );
+                })}
               </nav>
             </div>
           </div>
