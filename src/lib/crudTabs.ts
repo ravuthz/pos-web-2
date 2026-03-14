@@ -15,12 +15,14 @@ export interface CrudEditorTab<FormState> {
 interface UseCrudTabsOptions<FormState, Entity extends { id: number }> {
   createEmptyForm: () => FormState;
   getEditForm: (entity: Entity) => FormState;
+  getEditTitle?: (entity: Entity) => string;
   maxTabs?: number;
 }
 
 export function useCrudTabs<FormState, Entity extends { id: number }>({
   createEmptyForm,
   getEditForm,
+  getEditTitle,
   maxTabs = MAX_CRUD_TABS
 }: UseCrudTabsOptions<FormState, Entity>) {
   const [activeTabId, setActiveTabId] = useState(CRUD_MAIN_TAB_ID);
@@ -74,7 +76,7 @@ export function useCrudTabs<FormState, Entity extends { id: number }>({
     const nextTab: CrudEditorTab<FormState> = {
       id: tabId,
       type: 'edit',
-      title: `Edit #${entity.id}`,
+      title: getEditTitle?.(entity) ?? `Edit #${entity.id}`,
       entityId: entity.id,
       form: getEditForm(entity)
     };
