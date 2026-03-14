@@ -162,7 +162,7 @@ export function ShiftsPage() {
               <StatusBadge value={currentShift.status} />
               <button
                 type="button"
-                className="btn btn-secondary"
+                className="btn btn-primary"
                 onClick={() => {
                   setCloseForm({
                     actual_cash: String(currentShift.expected_cash ?? 0),

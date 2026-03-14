@@ -279,12 +279,13 @@ export function CustomersPage() {
                 header: 'Actions',
                 cell: (customer) => (
                   <div className="flex items-center gap-2">
-                    <button type="button" className="btn btn-secondary btn-icon" onClick={() => crudTabs.openEditTab(customer)}>
+                    <button type="button" className="btn btn-secondary btn-icon" title="Edit" onClick={() => crudTabs.openEditTab(customer)}>
                       <Pencil className="h-4 w-4" />
                     </button>
                     <button
                       type="button"
                       className="btn btn-danger btn-icon"
+                      title="Delete"
                       onClick={() => {
                         if (window.confirm(`Delete customer "${customer.name}"?`)) {
                           deleteMutation.mutate(customer.id);

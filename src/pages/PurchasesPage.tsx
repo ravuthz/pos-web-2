@@ -499,6 +499,7 @@ export function PurchasesPage() {
                       <button
                         type="button"
                         className="btn btn-danger btn-icon"
+                        title="Delete line"
                         onClick={() =>
                           crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
                             ...current,
@@ -608,6 +609,7 @@ export function PurchasesPage() {
                         <button
                           type="button"
                           className="btn btn-secondary btn-icon"
+                          title="Edit"
                           onClick={() => crudTabs.openEditTab(purchase)}
                         >
                           <Pencil className="h-4 w-4" />

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Trash2, X } from 'lucide-react';
+import { Check, DollarSign, Pencil, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { CrudTabs } from '@/components/ui/CrudTabs';
@@ -459,34 +459,39 @@ export function ExpensesPage() {
                     cell: (expense) => (
                       <div className="flex flex-wrap items-center gap-2">
                         {expense.is_editable ? (
-                          <button type="button" className="btn btn-secondary btn-icon" onClick={() => crudTabs.openEditTab(expense)}>
+                          <button type="button" className="btn btn-secondary btn-icon" title="Edit" onClick={() => crudTabs.openEditTab(expense)}>
                             <Pencil className="h-4 w-4" />
                           </button>
                         ) : null}
                         {expense.is_approvable ? (
                           <button
                             type="button"
-                            className="btn btn-secondary btn-sm"
+                            className="btn btn-icon bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800"
                             onClick={() => approveMutation.mutate(expense.id)}
                             disabled={approveMutation.isPending}
+                            aria-label="Approve expense"
+                            title="Approve"
                           >
-                            Approve
+                            <Check className="h-4 w-4" />
                           </button>
                         ) : null}
                         {expense.can_mark_as_paid ? (
                           <button
                             type="button"
-                            className="btn btn-primary btn-sm"
+                            className="btn btn-icon bg-green-600 text-white hover:bg-green-700 active:bg-green-800"
                             onClick={() => payMutation.mutate(expense.id)}
                             disabled={payMutation.isPending}
+                            aria-label="Mark expense as paid"
+                            title="Mark paid"
                           >
-                            Mark paid
+                            <DollarSign className="h-4 w-4" />
                           </button>
                         ) : null}
                         {expense.is_editable ? (
                           <button
                             type="button"
                             className="btn btn-danger btn-icon"
+                            title="Delete"
                             onClick={() => {
                               if (window.confirm(`Delete expense "${expense.expense_number}"?`)) {
                                 deleteMutation.mutate(expense.id);

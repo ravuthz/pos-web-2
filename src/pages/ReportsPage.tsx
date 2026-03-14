@@ -85,7 +85,7 @@ export function ReportsPage() {
         title="Reports"
         subtitle="Profitability and top-selling analysis for the selected date range."
         actions={
-          <>
+          <div className="grid w-full gap-2 sm:grid-cols-2 md:w-auto">
             <input
               type="date"
               className="input"
@@ -108,7 +108,7 @@ export function ReportsPage() {
                 }))
               }
             />
-          </>
+          </div>
         }
       />
 

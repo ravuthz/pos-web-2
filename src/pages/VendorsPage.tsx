@@ -396,12 +396,13 @@ export function VendorsPage() {
                 header: 'Actions',
                 cell: (vendor) => (
                   <div className="flex items-center gap-2">
-                    <button type="button" className="btn btn-secondary btn-icon" onClick={() => crudTabs.openEditTab(vendor)}>
+                    <button type="button" className="btn btn-secondary btn-icon" title="Edit" onClick={() => crudTabs.openEditTab(vendor)}>
                       <Pencil className="h-4 w-4" />
                     </button>
                     <button
                       type="button"
                       className="btn btn-danger btn-icon"
+                      title="Delete"
                       onClick={() => {
                         if (window.confirm(`Delete vendor "${vendor.name}"?`)) {
                           deleteMutation.mutate(vendor.id);
