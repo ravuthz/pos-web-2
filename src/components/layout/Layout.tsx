@@ -237,7 +237,7 @@ export function Layout() {
                     </div>
                   </div>
 
-                  <div className="navbar-end w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+                  <div className="navbar-end hidden lg:flex lg:w-auto lg:flex-row lg:flex-wrap lg:items-center lg:justify-end lg:gap-2">
                     <label className="flex items-center gap-2 text-sm text-surface-600">
                       <Palette className="h-4 w-4 shrink-0" />
                       <select
@@ -360,6 +360,39 @@ export function Layout() {
                     );
                   })}
                 </nav>
+
+                <div className="divider my-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-base-content/35 lg:hidden">
+                  Controls
+                </div>
+
+                <div className="space-y-3 lg:hidden">
+                  <label className="flex flex-col gap-1.5 text-sm text-surface-600">
+                    <span>Theme</span>
+                    <select
+                      className="select select-bordered min-h-11 w-full rounded-box bg-base-100 text-base-content"
+                      value={selectedTheme}
+                      onChange={(event) => setSelectedTheme(event.target.value as AppTheme)}
+                      title="Theme"
+                    >
+                      {appThemes.map((theme) => (
+                        <option key={theme} value={theme}>
+                          {theme.charAt(0).toUpperCase() + theme.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <BranchSelector fullWidth showMobileLabel />
+
+                  <button
+                    type="button"
+                    className="btn btn-primary w-full"
+                    onClick={() => logoutMutation.mutate()}
+                    disabled={logoutMutation.isPending}
+                  >
+                    {logoutMutation.isPending ? 'Signing out...' : 'Logout'}
+                  </button>
+                </div>
               </div>
             </aside>
           </div>

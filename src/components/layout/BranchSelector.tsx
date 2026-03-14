@@ -5,6 +5,12 @@ import { useAuthStore } from '@/store/auth';
 import { useBranchStore } from '@/store/branch';
 import type { Branch } from '@/types/api';
 
+interface BranchSelectorProps {
+  className?: string;
+  fullWidth?: boolean;
+  showMobileLabel?: boolean;
+}
+
 function toBranchOption(branch: Branch) {
   return {
     id: branch.id,
@@ -12,7 +18,11 @@ function toBranchOption(branch: Branch) {
   };
 }
 
-export function BranchSelector() {
+export function BranchSelector({
+  className = '',
+  fullWidth = false,
+  showMobileLabel = false
+}: BranchSelectorProps) {
   const user = useAuthStore((state) => state.user);
   const selectedBranchId = useBranchStore((state) => state.selectedBranchId);
   const setSelectedBranch = useBranchStore((state) => state.setSelectedBranch);
@@ -61,10 +71,16 @@ export function BranchSelector() {
   }
 
   return (
-    <label className="flex items-center gap-2 text-sm text-surface-600">
-      <span className="hidden sm:inline">Branch</span>
+    <label
+      className={`flex text-sm text-surface-600 ${
+        fullWidth ? 'w-full flex-col items-stretch gap-1.5' : 'items-center gap-2'
+      } ${className}`.trim()}
+    >
+      <span className={showMobileLabel ? '' : 'hidden sm:inline'}>Branch</span>
       <select
-        className="select select-bordered min-h-11 min-w-40 rounded-box bg-base-100 text-base-content"
+        className={`select select-bordered min-h-11 rounded-box bg-base-100 text-base-content ${
+          fullWidth ? 'w-full min-w-0' : 'min-w-40'
+        }`}
         value={selectedBranchId ?? ''}
         onChange={(event) => {
           const value = event.target.value;

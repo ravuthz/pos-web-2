@@ -83,31 +83,6 @@
   }
 }
 
-
-/* @layer components { */
-/* .app-table-shell {
-    @apply overflow-hidden rounded-[calc(var(--radius-box)*1.1)] border border-base-300 bg-base-100 shadow-sm;
-  } */
-
-/* .app-soft-panel {
-    @apply rounded-[calc(var(--radius-box)*1.1)] border border-surface-200 bg-surface-50 shadow-sm;
-  } */
-
-/* .app-choice-shell {
-    @apply rounded-[calc(var(--radius-box)*1.1)] border border-base-300 bg-base-100 text-left shadow-sm transition-colors hover:border-primary-300 hover:bg-primary-50;
-  } */
-
-/* .app-nav-link {
-    @apply h-auto w-full items-center justify-start rounded-[calc(var(--radius-field)*1.1)] border-0 px-3 py-2.5 text-left text-sm font-medium normal-case text-surface-700 shadow-none;
-    min-height: auto;
-  } */
-
-/* .app-nav-group-toggle {
-    @apply h-auto w-full items-center justify-between rounded-[calc(var(--radius-field)*1.1)] border-0 px-3 py-2.5 text-left text-sm font-medium normal-case text-surface-700 shadow-none;
-    min-height: auto;
-  } */
-/* } */
-
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;
