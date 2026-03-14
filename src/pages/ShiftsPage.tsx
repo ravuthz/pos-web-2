@@ -197,7 +197,7 @@ export function ShiftsPage() {
                 Record opening floats before the cashier starts transactions.
               </p>
             </div>
-            <button type="button" className="btn btn-ghost btn-icon" onClick={() => setIsOpenEditorVisible(false)}>
+            <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => setIsOpenEditorVisible(false)}>
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -285,7 +285,7 @@ export function ShiftsPage() {
                 Reconcile expected cash against actual drawer counts.
               </p>
             </div>
-            <button type="button" className="btn btn-ghost btn-icon" onClick={() => setIsCloseEditorVisible(false)}>
+            <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => setIsCloseEditorVisible(false)}>
               <X className="h-4 w-4" />
             </button>
           </div>

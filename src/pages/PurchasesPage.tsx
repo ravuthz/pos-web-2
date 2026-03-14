@@ -278,7 +278,7 @@ export function PurchasesPage() {
               </div>
               <button
                 type="button"
-                className="btn btn-ghost btn-icon"
+                className="btn btn-ghost btn-sm btn-square"
                 onClick={() => crudTabs.closeTab(activeEditorTab.id)}
               >
                 <X className="h-4 w-4" />
@@ -301,7 +301,7 @@ export function PurchasesPage() {
                 {activeEditorTab.form.products.map((item, index) => (
                   <div
                     key={`${item.product_id}-${index}`}
-                    className="grid gap-3 rounded-2xl border border-surface-200 p-4 md:grid-cols-[1fr_140px_140px]"
+                    className="card grid gap-3 border border-base-300 bg-base-100 p-4 shadow-sm md:grid-cols-[1fr_140px_140px]"
                   >
                     <div>
                       <p className="font-medium text-surface-900">
@@ -419,7 +419,7 @@ export function PurchasesPage() {
                   </div>
                 </div>
 
-                <div className="space-y-3 rounded-2xl border border-surface-200 p-4">
+                <div className="card space-y-3 border border-base-300 bg-base-100 p-4 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium text-surface-900">Products</p>
@@ -498,7 +498,7 @@ export function PurchasesPage() {
 
                       <button
                         type="button"
-                        className="btn btn-danger btn-icon"
+                        className="btn btn-error btn-sm btn-square"
                         title="Delete line"
                         onClick={() =>
                           crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
@@ -556,7 +556,7 @@ export function PurchasesPage() {
             )}
           </section>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-surface-200">
+          <div className="app-table-shell">
             <DataTable
               data={purchases}
               keyExtractor={(purchase) => purchase.id}
@@ -608,7 +608,7 @@ export function PurchasesPage() {
                       {purchase.is_editable ? (
                         <button
                           type="button"
-                          className="btn btn-secondary btn-icon"
+                          className="btn btn-secondary btn-sm btn-square"
                           title="Edit"
                           onClick={() => crudTabs.openEditTab(purchase)}
                         >

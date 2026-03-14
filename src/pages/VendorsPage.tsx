@@ -161,7 +161,7 @@ export function VendorsPage() {
                   : 'Add a supplier for purchase orders and cost tracking.'}
               </p>
             </div>
-            <button type="button" className="btn btn-ghost btn-icon" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
+            <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -351,7 +351,7 @@ export function VendorsPage() {
           }}
         />
 
-        <div className="overflow-hidden rounded-2xl border border-surface-200">
+        <div className="app-table-shell">
           <DataTable
             data={vendors}
             keyExtractor={(vendor) => vendor.id}
@@ -396,12 +396,12 @@ export function VendorsPage() {
                 header: 'Actions',
                 cell: (vendor) => (
                   <div className="flex items-center gap-2">
-                    <button type="button" className="btn btn-secondary btn-icon" title="Edit" onClick={() => crudTabs.openEditTab(vendor)}>
+                    <button type="button" className="btn btn-secondary btn-sm btn-square" title="Edit" onClick={() => crudTabs.openEditTab(vendor)}>
                       <Pencil className="h-4 w-4" />
                     </button>
                     <button
                       type="button"
-                      className="btn btn-danger btn-icon"
+                      className="btn btn-error btn-sm btn-square"
                       title="Delete"
                       onClick={() => {
                         if (window.confirm(`Delete vendor "${vendor.name}"?`)) {

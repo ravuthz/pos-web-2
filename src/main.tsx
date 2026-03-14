@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { RouterProvider } from '@tanstack/react-router';
 import { Toaster } from 'sonner';
 import { router } from '@/router';
+import { initializeTheme } from '@/lib/theme';
 import '@/index.css';
 
 const queryClient = new QueryClient({
@@ -16,6 +17,8 @@ const queryClient = new QueryClient({
     }
   }
 });
+
+initializeTheme();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

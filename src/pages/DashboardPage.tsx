@@ -112,7 +112,7 @@ export function DashboardPage() {
               {activities.slice(0, 6).map((activity, index) => (
                 <div
                   key={`${activity.title ?? 'activity'}-${index}`}
-                  className="rounded-2xl border border-surface-200 px-4 py-3"
+                  className="card border border-base-300 bg-base-100 px-4 py-3 shadow-sm"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
@@ -151,7 +151,7 @@ export function DashboardPage() {
               {lowStockAlerts.slice(0, 8).map((product) => (
                 <div
                   key={product.id}
-                  className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
+                  className="card border border-warning/30 bg-warning/10 px-4 py-3 shadow-sm"
                 >
                   <div className="flex items-center justify-between gap-3">
                     <div>

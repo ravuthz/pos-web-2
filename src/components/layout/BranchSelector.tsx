@@ -64,7 +64,7 @@ export function BranchSelector() {
     <label className="flex items-center gap-2 text-sm text-surface-600">
       <span className="hidden sm:inline">Branch</span>
       <select
-        className="input min-w-40 bg-white"
+        className="select select-bordered min-h-11 min-w-40 rounded-box bg-base-100 text-base-content"
         value={selectedBranchId ?? ''}
         onChange={(event) => {
           const value = event.target.value;

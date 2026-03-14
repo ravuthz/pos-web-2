@@ -9,18 +9,20 @@ interface StatCardProps {
 }
 
 const toneClasses: Record<NonNullable<StatCardProps['tone']>, string> = {
-  default: 'border-surface-200',
-  success: 'border-emerald-200 bg-emerald-50/70',
-  warning: 'border-amber-200 bg-amber-50/70',
-  danger: 'border-rose-200 bg-rose-50/70'
+  default: 'border-base-300 bg-base-100',
+  success: 'border-success/30 bg-success/10',
+  warning: 'border-warning/30 bg-warning/10',
+  danger: 'border-error/30 bg-error/10'
 };
 
 export function StatCard({ label, value, description, tone = 'default' }: StatCardProps) {
   return (
-    <div className={cn('card space-y-2 border', toneClasses[tone])}>
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-surface-500">{label}</p>
-      <p className="text-2xl font-semibold text-surface-900">{value}</p>
-      {description ? <p className="text-sm text-surface-600">{description}</p> : null}
+    <div className={cn('stats w-full border shadow-sm', toneClasses[tone])}>
+      <div className="stat p-5">
+        <p className="stat-title text-[11px] font-semibold uppercase tracking-[0.18em] text-base-content/50">{label}</p>
+        <p className="stat-value text-3xl text-base-content">{value}</p>
+        {description ? <p className="stat-desc mt-2 text-sm text-base-content/60">{description}</p> : null}
+      </div>
     </div>
   );
 }

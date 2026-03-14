@@ -1,12 +1,68 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@plugin "daisyui" {
+  themes: light --default, dark --prefersdark, valentine, dracula, emerald;
+}
+
+@theme inline {
+  --font-sans: "Inter", "system-ui", "sans-serif";
+  --color-primary-50: var(--app-color-primary-50);
+  --color-primary-100: var(--app-color-primary-100);
+  --color-primary-200: var(--app-color-primary-200);
+  --color-primary-300: var(--app-color-primary-300);
+  --color-primary-400: var(--app-color-primary-400);
+  --color-primary-500: var(--app-color-primary-500);
+  --color-primary-600: var(--app-color-primary-600);
+  --color-primary-700: var(--app-color-primary-700);
+  --color-primary-800: var(--app-color-primary-800);
+  --color-primary-900: var(--app-color-primary-900);
+  --color-surface-50: var(--app-color-surface-50);
+  --color-surface-100: var(--app-color-surface-100);
+  --color-surface-200: var(--app-color-surface-200);
+  --color-surface-300: var(--app-color-surface-300);
+  --color-surface-400: var(--app-color-surface-400);
+  --color-surface-500: var(--app-color-surface-500);
+  --color-surface-600: var(--app-color-surface-600);
+  --color-surface-700: var(--app-color-surface-700);
+  --color-surface-800: var(--app-color-surface-800);
+  --color-surface-900: var(--app-color-surface-900);
+}
 
 @layer base {
+
+  :root,
+  [data-theme] {
+    --app-color-primary-50: color-mix(in oklch, var(--color-primary) 12%, var(--color-base-100) 88%);
+    --app-color-primary-100: color-mix(in oklch, var(--color-primary) 20%, var(--color-base-100) 80%);
+    --app-color-primary-200: color-mix(in oklch, var(--color-primary) 32%, var(--color-base-100) 68%);
+    --app-color-primary-300: color-mix(in oklch, var(--color-primary) 46%, var(--color-base-100) 54%);
+    --app-color-primary-400: color-mix(in oklch, var(--color-primary) 64%, var(--color-base-100) 36%);
+    --app-color-primary-500: var(--color-primary);
+    --app-color-primary-600: color-mix(in oklch, var(--color-primary) 88%, var(--color-primary-content) 12%);
+    --app-color-primary-700: color-mix(in oklch, var(--color-primary) 78%, var(--color-primary-content) 22%);
+    --app-color-primary-800: color-mix(in oklch, var(--color-primary) 66%, var(--color-primary-content) 34%);
+    --app-color-primary-900: color-mix(in oklch, var(--color-primary) 54%, var(--color-primary-content) 46%);
+    --app-color-surface-50: var(--color-base-100);
+    --app-color-surface-100: var(--color-base-200);
+    --app-color-surface-200: var(--color-base-300);
+    --app-color-surface-300: color-mix(in oklch, var(--color-base-300) 84%, var(--color-base-content) 16%);
+    --app-color-surface-400: color-mix(in oklch, var(--color-base-300) 68%, var(--color-base-content) 32%);
+    --app-color-surface-500: color-mix(in oklch, var(--color-base-300) 52%, var(--color-base-content) 48%);
+    --app-color-surface-600: color-mix(in oklch, var(--color-base-content) 62%, var(--color-base-100) 38%);
+    --app-color-surface-700: color-mix(in oklch, var(--color-base-content) 74%, var(--color-base-100) 26%);
+    --app-color-surface-800: color-mix(in oklch, var(--color-base-content) 86%, var(--color-base-100) 14%);
+    --app-color-surface-900: var(--color-base-content);
+  }
+
   * {
     -webkit-tap-highlight-color: transparent;
+  }
+
+  html,
+  body,
+  #root {
+    @apply h-full;
   }
 
   html {
@@ -14,95 +70,43 @@
   }
 
   body {
-    @apply bg-surface-50 text-surface-900 font-sans;
+    @apply overflow-hidden bg-base-200 text-base-content font-sans;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  input, select, textarea, button {
+  input,
+  select,
+  textarea,
+  button {
     font-family: inherit;
   }
 }
 
-@layer components {
-  .btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
-    min-height: 44px;
-  }
 
-  .btn-primary {
-    @apply bg-primary-700 text-white hover:bg-primary-800 active:bg-primary-900;
-  }
+/* @layer components { */
+/* .app-table-shell {
+    @apply overflow-hidden rounded-[calc(var(--radius-box)*1.1)] border border-base-300 bg-base-100 shadow-sm;
+  } */
 
-  .btn-secondary {
-    @apply bg-surface-200 text-surface-700 hover:bg-surface-300 active:bg-surface-400;
-  }
+/* .app-soft-panel {
+    @apply rounded-[calc(var(--radius-box)*1.1)] border border-surface-200 bg-surface-50 shadow-sm;
+  } */
 
-  .btn-ghost {
-    @apply bg-transparent text-surface-600 hover:bg-surface-100 active:bg-surface-200;
-  }
+/* .app-choice-shell {
+    @apply rounded-[calc(var(--radius-box)*1.1)] border border-base-300 bg-base-100 text-left shadow-sm transition-colors hover:border-primary-300 hover:bg-primary-50;
+  } */
 
-  .btn-danger {
-    @apply bg-red-600 text-white hover:bg-red-700 active:bg-red-800;
-  }
+/* .app-nav-link {
+    @apply h-auto w-full items-center justify-start rounded-[calc(var(--radius-field)*1.1)] border-0 px-3 py-2.5 text-left text-sm font-medium normal-case text-surface-700 shadow-none;
+    min-height: auto;
+  } */
 
-  .btn-sm {
-    @apply px-3 py-1.5 text-xs min-h-8;
-  }
-
-  .btn-lg {
-    @apply px-6 py-3 text-base min-h-12;
-  }
-
-  .btn-icon {
-    @apply rounded-2xl p-2.5 min-w-11;
-  }
-
-  .input {
-    @apply w-full px-3 py-2.5 bg-white border border-surface-300 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500;
-    min-height: 44px;
-  }
-
-  .input-error {
-    @apply border-red-500 focus:ring-red-500 focus:border-red-500;
-  }
-
-  .label {
-    @apply block text-sm font-medium text-surface-700 mb-1.5;
-  }
-
-  .card {
-    @apply bg-white rounded-xl border border-surface-200 shadow-soft p-4 md:p-6;
-  }
-
-  .card-header {
-    @apply flex items-center justify-between mb-4;
-  }
-
-  .badge {
-    @apply inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-full;
-  }
-
-  .badge-success {
-    @apply bg-green-100 text-green-800;
-  }
-
-  .badge-warning {
-    @apply bg-amber-100 text-amber-800;
-  }
-
-  .badge-danger {
-    @apply bg-red-100 text-red-800;
-  }
-
-  .badge-info {
-    @apply bg-blue-100 text-blue-800;
-  }
-
-  .badge-neutral {
-    @apply bg-surface-100 text-surface-600;
-  }
-}
+/* .app-nav-group-toggle {
+    @apply h-auto w-full items-center justify-between rounded-[calc(var(--radius-field)*1.1)] border-0 px-3 py-2.5 text-left text-sm font-medium normal-case text-surface-700 shadow-none;
+    min-height: auto;
+  } */
+/* } */
 
 @layer utilities {
   .scrollbar-hide {

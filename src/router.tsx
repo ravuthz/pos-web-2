@@ -29,7 +29,7 @@ function RootComponent() {
 const rootRoute = createRootRoute({
   component: RootComponent,
   notFoundComponent: () => (
-    <div className="flex min-h-screen items-center justify-center bg-surface-50 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-base-200 p-4">
       <div className="text-center">
         <h1 className="text-2xl font-bold text-surface-900">404</h1>
         <p className="text-surface-600">Page not found</p>

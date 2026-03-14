@@ -137,7 +137,10 @@ export function ReportsPage() {
           ) : (
             <div className="space-y-3">
               {topProducts.map((item: any, index) => (
-                <div key={`${item.product_id ?? item.product_name}-${index}`} className="rounded-2xl border border-surface-200 px-4 py-3">
+                <div
+                  key={`${item.product_id ?? item.product_name}-${index}`}
+                  className="card border border-base-300 bg-base-100 px-4 py-3 shadow-sm"
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-medium text-surface-900">
@@ -173,7 +176,10 @@ export function ReportsPage() {
           ) : (
             <div className="space-y-3">
               {topCategories.map((item: any, index) => (
-                <div key={`${item.category_id ?? item.category_name}-${index}`} className="rounded-2xl border border-surface-200 px-4 py-3">
+                <div
+                  key={`${item.category_id ?? item.category_name}-${index}`}
+                  className="card border border-base-300 bg-base-100 px-4 py-3 shadow-sm"
+                >
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-medium text-surface-900">

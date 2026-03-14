@@ -234,7 +234,10 @@ export function PosPage() {
   }
 
   const subtotal = cart.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
-  const change = Math.max(0, Number(paymentReceived || '0') - subtotal);
+  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const receivedAmount = Number(paymentReceived || '0');
+  const change = Math.max(0, receivedAmount - subtotal);
+  const remaining = Math.max(0, subtotal - receivedAmount);
 
   if (!selectedBranchId) {
     return (
@@ -275,8 +278,8 @@ export function PosPage() {
       />
 
       {message ? (
-        <div className="rounded-2xl border border-surface-200 bg-surface-50 px-4 py-3 text-sm text-surface-700">
-          {message}
+        <div role="alert" className="alert border border-base-300 bg-base-100 text-sm text-base-content shadow-sm">
+          <span>{message}</span>
         </div>
       ) : null}
 
@@ -288,51 +291,54 @@ export function PosPage() {
       ) : (
         <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
           <section className="space-y-4">
-            <div className="card">
-              <div className="card-header">
-                <div>
-                  <h2 className="text-lg font-semibold text-surface-900">Customer</h2>
-                  <p className="text-sm text-surface-500">Search by name or phone and attach the sale.</p>
+            <div className="card border border-base-300 bg-base-100 shadow-sm">
+              <div className="card-body gap-4 p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-semibold text-surface-900">Customer</h2>
+                    <p className="text-sm text-surface-500">Search by name or phone and attach the sale.</p>
+                  </div>
+                  <div className="badge badge-outline badge-primary">
+                    {selectedCustomer ? 'Customer attached' : 'Walk-in sale'}
+                  </div>
                 </div>
-              </div>
 
-              <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-                <div>
-                  <label className="label" htmlFor="customer-search">
-                    Search customers
-                  </label>
-                  <input
-                    id="customer-search"
-                    className="input"
-                    placeholder="Search by name or phone"
-                    value={customerSearch}
-                    onChange={(event) => setCustomerSearch(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' && customerSearch.trim()) {
-                        event.preventDefault();
-                        customerSearchMutation.mutate(customerSearch);
-                      }
-                    }}
-                  />
+                <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                  <div>
+                    <label className="label" htmlFor="customer-search">
+                      Search customers
+                    </label>
+                    <input
+                      id="customer-search"
+                      className="input input-bordered w-full"
+                      placeholder="Search by name or phone"
+                      value={customerSearch}
+                      onChange={(event) => setCustomerSearch(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' && customerSearch.trim()) {
+                          event.preventDefault();
+                          customerSearchMutation.mutate(customerSearch);
+                        }
+                      }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-secondary self-end"
+                    onClick={() => customerSearchMutation.mutate(customerSearch)}
+                    disabled={customerSearchMutation.isPending || customerSearch.trim().length === 0}
+                  >
+                    {customerSearchMutation.isPending ? 'Searching...' : 'Search'}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  className="btn btn-secondary self-end"
-                  onClick={() => customerSearchMutation.mutate(customerSearch)}
-                  disabled={customerSearchMutation.isPending || customerSearch.trim().length === 0}
-                >
-                  {customerSearchMutation.isPending ? 'Searching...' : 'Search'}
-                </button>
-              </div>
 
-              <div className="mt-4 space-y-3">
-                <div className="rounded-2xl border border-surface-200 bg-surface-50 px-4 py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      <div className="rounded-2xl bg-white p-2 text-primary-700 shadow-sm">
+                <div className="card border border-base-300 bg-base-200/60 shadow-sm">
+                  <div className="card-body flex-row items-start justify-between gap-3 p-4">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <div className="rounded-box bg-primary/10 p-2 text-primary shadow-sm">
                         <UserRound className="h-4 w-4" />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="font-medium text-surface-900">
                           {selectedCustomer ? selectedCustomer.name : 'Walk-in customer'}
                         </p>
@@ -344,16 +350,22 @@ export function PosPage() {
                       </div>
                     </div>
 
-                    {selectedCustomer ? (
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-icon"
-                        onClick={() => setSelectedCustomer(null)}
-                        aria-label="Clear selected customer"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    ) : null}
+                    <div className="flex items-center gap-2">
+                      <div className="badge badge-ghost badge-sm">
+                        {selectedCustomer ? 'Selected' : 'Default'}
+                      </div>
+                      {selectedCustomer ? (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm btn-square"
+                          onClick={() => setSelectedCustomer(null)}
+                          aria-label="Clear selected customer"
+                          title="Clear customer"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
 
@@ -363,23 +375,23 @@ export function PosPage() {
                       <button
                         key={customer.id}
                         type="button"
-                        className="rounded-2xl border border-surface-200 p-4 text-left transition hover:border-primary-300 hover:bg-primary-50"
+                        className="card w-full border border-base-300 bg-base-100 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary hover:bg-primary/5 hover:shadow-md"
                         onClick={() => {
                           setSelectedCustomer(customer);
                           setCustomerResults([]);
                           setCustomerSearch(customer.display_name ?? customer.name);
                         }}
                       >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-medium text-surface-900">{customer.name}</p>
-                            <p className="mt-1 text-sm text-surface-500">
-                              {customer.phone ?? customer.email ?? 'No contact info'}
-                            </p>
+                        <div className="card-body gap-2 p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="font-medium text-surface-900">{customer.name}</p>
+                              <p className="mt-1 text-sm text-surface-500">
+                                {customer.phone ?? customer.email ?? 'No contact info'}
+                              </p>
+                            </div>
+                            <span className="badge badge-primary badge-outline badge-sm">Select</span>
                           </div>
-                          <span className="text-xs font-medium uppercase tracking-wide text-primary-700">
-                            Select
-                          </span>
                         </div>
                       </button>
                     ))}
@@ -392,239 +404,279 @@ export function PosPage() {
               </div>
             </div>
 
-            <div className="card">
-              <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+            <div className="card border border-base-300 bg-base-100 shadow-sm">
+              <div className="card-body gap-5 p-5">
                 <div>
-                  <label className="label" htmlFor="product-search">
-                    Search products
-                  </label>
-                  <input
-                    id="product-search"
-                    className="input"
-                    placeholder="Search by name, code, or barcode"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="btn btn-primary self-end"
-                  onClick={() => searchMutation.mutate(search)}
-                  disabled={searchMutation.isPending || search.trim().length === 0}
-                >
-                  {searchMutation.isPending ? 'Searching...' : 'Search'}
-                </button>
-              </div>
-
-              <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
-                <div>
-                  <label className="label" htmlFor="barcode">
-                    Scan barcode
-                  </label>
-                  <input
-                    id="barcode"
-                    className="input"
-                    placeholder="Enter or scan a barcode"
-                    value={barcode}
-                    onChange={(event) => setBarcode(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' && barcode.trim()) {
-                        event.preventDefault();
-                        barcodeMutation.mutate(barcode);
-                      }
-                    }}
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="btn btn-secondary self-end"
-                  onClick={() => barcodeMutation.mutate(barcode)}
-                  disabled={barcodeMutation.isPending || barcode.trim().length === 0}
-                >
-                  <ScanLine className="h-4 w-4" />
-                  {barcodeMutation.isPending ? 'Scanning...' : 'Add'}
-                </button>
-              </div>
-            </div>
-
-            <div className="card">
-              <div className="card-header">
-                <div>
-                  <h2 className="text-lg font-semibold text-surface-900">Search results</h2>
-                  <p className="text-sm text-surface-500">Tap a product to move it into the cart.</p>
-                </div>
-              </div>
-
-              {searchResults.length === 0 ? (
-                <EmptyState
-                  title="No products loaded"
-                  message="Search by name or scan a barcode to pull products into the POS cart."
-                />
-              ) : (
-                <div className="grid gap-3 md:grid-cols-2">
-                  {searchResults.map((product) => (
-                    <button
-                      key={product.id}
-                      type="button"
-                      onClick={() => addToCart(product)}
-                      className="rounded-2xl border border-surface-200 p-4 text-left transition hover:border-primary-300 hover:bg-primary-50"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="font-medium text-surface-900">{product.name}</p>
-                          <p className="mt-1 text-sm text-surface-500">
-                            {product.code ?? product.barcode ?? 'No code'}
-                          </p>
-                        </div>
-                        <p className="font-semibold text-primary-700">
-                          {formatCurrency(Number(product.selling_price))}
-                        </p>
-                      </div>
-                      <div className="mt-3 flex items-center justify-between text-sm text-surface-600">
-                        <span>{product.category?.name ?? 'Uncategorized'}</span>
-                        <span>Stock: {product.quantity_on_hand ?? 0}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section className="card">
-            <div className="card-header">
-              <div>
-                <h2 className="text-lg font-semibold text-surface-900">Cart</h2>
-                <p className="text-sm text-surface-500">Adjust quantities, then complete checkout.</p>
-              </div>
-            </div>
-
-            {cart.length === 0 ? (
-              <EmptyState
-                title="Your cart is empty"
-                message="Products added from search or barcode scan will appear here."
-              />
-            ) : (
-              <div className="space-y-4">
-                <div className="space-y-3">
-                  {cart.map((item) => (
-                    <div key={item.product_id} className="rounded-2xl border border-surface-200 p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="font-medium text-surface-900">{item.name}</p>
-                          <p className="text-sm text-surface-500">{item.code ?? 'No code'}</p>
-                        </div>
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-icon"
-                          onClick={() => updateQuantity(item.product_id, 0)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-
-                      <div className="mt-3 flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            className="btn btn-secondary btn-icon"
-                            onClick={() => updateQuantity(item.product_id, item.quantity - 1)}
-                          >
-                            <Minus className="h-4 w-4" />
-                          </button>
-                          <span className="w-10 text-center font-medium">{item.quantity}</span>
-                          <button
-                            type="button"
-                            className="btn btn-secondary btn-icon"
-                            onClick={() => updateQuantity(item.product_id, item.quantity + 1)}
-                          >
-                            <Plus className="h-4 w-4" />
-                          </button>
-                        </div>
-                        <p className="font-semibold text-surface-900">
-                          {formatCurrency(item.unit_price * item.quantity)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                  <h2 className="text-lg font-semibold text-surface-900">Search and scan</h2>
+                  <p className="text-sm text-surface-500">Find products quickly by keyword, product code, or barcode.</p>
                 </div>
 
-                <div className="rounded-3xl bg-surface-50 p-4">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-sm text-surface-600">
-                      <span>Subtotal</span>
-                      <span>{formatCurrency(subtotal)}</span>
-                    </div>
-                    <div className="grid gap-3">
-                      <div>
-                        <label className="label" htmlFor="payment-method">
-                          Payment method
-                        </label>
-                        <select
-                          id="payment-method"
-                          className="input"
-                          value={paymentMethod}
-                          onChange={(event) =>
-                            setPaymentMethod(event.target.value as 'cash' | 'card' | 'transfer' | 'khqr')
-                          }
-                        >
-                          <option value="cash">Cash</option>
-                          <option value="card">Card</option>
-                          <option value="transfer">Transfer</option>
-                          <option value="khqr">KHQR</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="label" htmlFor="payment-received">
-                          Payment received
-                        </label>
-                        <input
-                          id="payment-received"
-                          className="input"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={paymentReceived}
-                          onChange={(event) => setPaymentReceived(event.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <label className="label" htmlFor="notes">
-                          Notes
-                        </label>
-                        <textarea
-                          id="notes"
-                          className="input min-h-24"
-                          value={notes}
-                          onChange={(event) => setNotes(event.target.value)}
-                          placeholder="Optional notes for this sale"
-                        />
-                      </div>
-                    </div>
+                <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                  <div>
+                    <label className="label" htmlFor="product-search">
+                      Search products
+                    </label>
+                    <input
+                      id="product-search"
+                      className="input input-bordered w-full"
+                      placeholder="Search by name, code, or barcode"
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                    />
                   </div>
-
-                  <div className="mt-4 space-y-2 rounded-2xl bg-white p-4">
-                    <div className="flex items-center justify-between text-sm text-surface-600">
-                      <span>Total</span>
-                      <span className="font-semibold text-surface-900">{formatCurrency(subtotal)}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-sm text-surface-600">
-                      <span>Change</span>
-                      <span>{formatCurrency(change)}</span>
-                    </div>
-                  </div>
-
                   <button
                     type="button"
-                    className="btn btn-primary mt-4 w-full"
-                    onClick={() => checkoutMutation.mutate()}
-                    disabled={checkoutMutation.isPending}
+                    className="btn btn-primary self-end"
+                    onClick={() => searchMutation.mutate(search)}
+                    disabled={searchMutation.isPending || search.trim().length === 0}
                   >
-                    {checkoutMutation.isPending ? 'Processing sale...' : 'Complete checkout'}
+                    {searchMutation.isPending ? 'Searching...' : 'Search'}
+                  </button>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                  <div>
+                    <label className="label" htmlFor="barcode">
+                      Scan barcode
+                    </label>
+                    <input
+                      id="barcode"
+                      className="input input-bordered w-full"
+                      placeholder="Enter or scan a barcode"
+                      value={barcode}
+                      onChange={(event) => setBarcode(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' && barcode.trim()) {
+                          event.preventDefault();
+                          barcodeMutation.mutate(barcode);
+                        }
+                      }}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-secondary self-end"
+                    onClick={() => barcodeMutation.mutate(barcode)}
+                    disabled={barcodeMutation.isPending || barcode.trim().length === 0}
+                  >
+                    <ScanLine className="h-4 w-4" />
+                    {barcodeMutation.isPending ? 'Scanning...' : 'Add'}
                   </button>
                 </div>
               </div>
-            )}
+            </div>
+
+            <div className="card border border-base-300 bg-base-100 shadow-sm">
+              <div className="card-body gap-4 p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-semibold text-surface-900">Search results</h2>
+                    <p className="text-sm text-surface-500">Tap a product card to move it into the cart.</p>
+                  </div>
+                  {searchResults.length > 0 ? (
+                    <div className="badge badge-outline badge-primary">{searchResults.length} products</div>
+                  ) : null}
+                </div>
+
+                {searchResults.length === 0 ? (
+                  <EmptyState
+                    title="No products loaded"
+                    message="Search by name or scan a barcode to pull products into the POS cart."
+                  />
+                ) : (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {searchResults.map((product) => (
+                      <button
+                        key={product.id}
+                        type="button"
+                        onClick={() => addToCart(product)}
+                        className="card border border-base-300 bg-base-100 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary hover:bg-primary/5 hover:shadow-md"
+                      >
+                        <div className="card-body gap-3 p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate font-medium text-surface-900">{product.name}</p>
+                              <p className="mt-1 text-sm text-surface-500">
+                                {product.code ?? product.barcode ?? 'No code'}
+                              </p>
+                            </div>
+                            <p className="shrink-0 font-semibold text-primary-700">
+                              {formatCurrency(Number(product.selling_price))}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2 text-xs">
+                            <span className="badge badge-outline">
+                              {product.category?.name ?? 'Uncategorized'}
+                            </span>
+                            <span className="badge badge-ghost">Stock {product.quantity_on_hand ?? 0}</span>
+                            {product.barcode ? <span className="badge badge-ghost">Barcode</span> : null}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section className="card border border-base-300 bg-base-100 shadow-lg">
+            <div className="card-body gap-4 p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-surface-900">Cart</h2>
+                  <p className="text-sm text-surface-500">Adjust quantities, then complete checkout.</p>
+                </div>
+                {cart.length > 0 ? (
+                  <div className="badge badge-outline badge-primary">{totalItems} items</div>
+                ) : null}
+              </div>
+
+              {cart.length === 0 ? (
+                <EmptyState
+                  title="Your cart is empty"
+                  message="Products added from search or barcode scan will appear here."
+                />
+              ) : (
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    {cart.map((item) => (
+                      <div
+                        key={item.product_id}
+                        className="card border border-base-300 bg-base-200/60 shadow-sm"
+                      >
+                        <div className="card-body gap-4 p-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0">
+                              <p className="truncate font-medium text-surface-900">{item.name}</p>
+                              <p className="text-sm text-surface-500">{item.code ?? 'No code'}</p>
+                              <p className="mt-1 text-xs uppercase tracking-[0.14em] text-surface-400">
+                                Unit {formatCurrency(item.unit_price)}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-sm btn-square"
+                              onClick={() => updateQuantity(item.product_id, 0)}
+                              title="Remove item"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-2 rounded-box border border-base-300 bg-base-100 p-1 shadow-sm">
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-sm btn-square"
+                                onClick={() => updateQuantity(item.product_id, item.quantity - 1)}
+                              >
+                                <Minus className="h-4 w-4" />
+                              </button>
+                              <span className="flex h-8 min-w-10 items-center justify-center rounded-box bg-base-200 px-3 text-sm font-semibold">
+                                {item.quantity}
+                              </span>
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-sm btn-square"
+                                onClick={() => updateQuantity(item.product_id, item.quantity + 1)}
+                              >
+                                <Plus className="h-4 w-4" />
+                              </button>
+                            </div>
+                            <p className="text-right font-semibold text-surface-900">
+                              {formatCurrency(item.unit_price * item.quantity)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="card border border-primary/20 bg-primary/5 shadow-md">
+                    <div className="card-body gap-4 p-5">
+                      <div className="grid gap-3">
+                        <div>
+                          <label className="label" htmlFor="payment-method">
+                            Payment method
+                          </label>
+                          <select
+                            id="payment-method"
+                            className="select select-bordered w-full"
+                            value={paymentMethod}
+                            onChange={(event) =>
+                              setPaymentMethod(event.target.value as 'cash' | 'card' | 'transfer' | 'khqr')
+                            }
+                          >
+                            <option value="cash">Cash</option>
+                            <option value="card">Card</option>
+                            <option value="transfer">Transfer</option>
+                            <option value="khqr">KHQR</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="label" htmlFor="payment-received">
+                            Payment received
+                          </label>
+                          <input
+                            id="payment-received"
+                            className="input input-bordered w-full"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={paymentReceived}
+                            onChange={(event) => setPaymentReceived(event.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="label" htmlFor="notes">
+                            Notes
+                          </label>
+                          <textarea
+                            id="notes"
+                            className="textarea textarea-bordered min-h-24 w-full"
+                            value={notes}
+                            onChange={(event) => setNotes(event.target.value)}
+                            placeholder="Optional notes for this sale"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="rounded-[calc(var(--radius-box)*1.1)] border border-base-300 bg-base-100 p-4 shadow-sm">
+                        <div className="flex items-center justify-between text-sm text-surface-600">
+                          <span>Items</span>
+                          <span>{totalItems}</span>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between text-sm text-surface-600">
+                          <span>Total</span>
+                          <span className="text-lg font-semibold text-surface-900">
+                            {formatCurrency(subtotal)}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between text-sm text-surface-600">
+                          <span>{remaining > 0 ? 'Remaining' : 'Change'}</span>
+                          <span className={remaining > 0 ? 'font-semibold text-error' : 'font-semibold text-success'}>
+                            {formatCurrency(remaining > 0 ? remaining : change)}
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-lg w-full"
+                        onClick={() => checkoutMutation.mutate()}
+                        disabled={checkoutMutation.isPending}
+                      >
+                        {checkoutMutation.isPending
+                          ? 'Processing sale...'
+                          : `Complete checkout • ${formatCurrency(subtotal)}`}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </section>
         </div>
       )}

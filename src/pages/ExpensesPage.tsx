@@ -218,7 +218,7 @@ export function ExpensesPage() {
                   : 'Create a new expense for the selected branch.'}
               </p>
             </div>
-            <button type="button" className="btn btn-ghost btn-icon" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
+            <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -409,7 +409,7 @@ export function ExpensesPage() {
               />
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-surface-200">
+            <div className="app-table-shell">
               <DataTable
                 data={expenses}
                 keyExtractor={(expense) => expense.id}
@@ -459,14 +459,14 @@ export function ExpensesPage() {
                     cell: (expense) => (
                       <div className="flex flex-wrap items-center gap-2">
                         {expense.is_editable ? (
-                          <button type="button" className="btn btn-secondary btn-icon" title="Edit" onClick={() => crudTabs.openEditTab(expense)}>
+                          <button type="button" className="btn btn-secondary btn-sm btn-square" title="Edit" onClick={() => crudTabs.openEditTab(expense)}>
                             <Pencil className="h-4 w-4" />
                           </button>
                         ) : null}
                         {expense.is_approvable ? (
                           <button
                             type="button"
-                            className="btn btn-icon bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800"
+                            className="btn btn-info btn-sm btn-square"
                             onClick={() => approveMutation.mutate(expense.id)}
                             disabled={approveMutation.isPending}
                             aria-label="Approve expense"
@@ -478,7 +478,7 @@ export function ExpensesPage() {
                         {expense.can_mark_as_paid ? (
                           <button
                             type="button"
-                            className="btn btn-icon bg-green-600 text-white hover:bg-green-700 active:bg-green-800"
+                            className="btn btn-success btn-sm btn-square"
                             onClick={() => payMutation.mutate(expense.id)}
                             disabled={payMutation.isPending}
                             aria-label="Mark expense as paid"
@@ -490,7 +490,7 @@ export function ExpensesPage() {
                         {expense.is_editable ? (
                           <button
                             type="button"
-                            className="btn btn-danger btn-icon"
+                            className="btn btn-error btn-sm btn-square"
                             title="Delete"
                             onClick={() => {
                               if (window.confirm(`Delete expense "${expense.expense_number}"?`)) {

@@ -9,6 +9,11 @@ import { useAuthStore } from '@/store/auth';
 import { useBranchStore } from '@/store/branch';
 import { extractApiError } from '@/lib/api';
 
+const loginBackgroundStyle = {
+  backgroundImage:
+    'radial-gradient(circle at top, color-mix(in oklch, var(--color-primary) 24%, transparent), transparent 35%), linear-gradient(180deg, var(--color-base-content), color-mix(in oklch, var(--color-base-content) 78%, var(--color-base-100) 22%))'
+};
+
 const loginSchema = z.object({
   identifier: z.string().trim().min(1, 'Username or email is required'),
   password: z.string().min(1, 'Password is required')
@@ -59,8 +64,11 @@ export function LoginPage() {
   });
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(20,184,166,0.28),_transparent_35%),linear-gradient(180deg,_#0f172a,_#134e4a)] p-4">
-      <div className="grid w-full max-w-5xl overflow-hidden rounded-[2rem] bg-white shadow-2xl lg:grid-cols-[1.1fr_0.9fr]">
+    <div
+      className="flex min-h-screen items-center justify-center bg-surface-900 p-4"
+      style={loginBackgroundStyle}
+    >
+      <div className="grid w-full max-w-5xl overflow-hidden rounded-[2rem] bg-surface-50 shadow-2xl lg:grid-cols-[1.1fr_0.9fr]">
         <div className="hidden bg-surface-900 p-10 text-white lg:block">
           <p className="text-xs uppercase tracking-[0.26em] text-teal-300">Web2 Workspace</p>
           <h1 className="mt-6 text-4xl font-semibold leading-tight">

@@ -1,29 +1,27 @@
-import { cn } from '@/lib/utils';
-
 interface StatusBadgeProps {
   value?: string | null;
 }
 
 const palette: Record<string, string> = {
-  active: 'badge-success',
-  completed: 'badge-success',
-  received: 'badge-success',
-  approved: 'badge-success',
-  paid: 'badge-success',
-  open: 'badge-info',
-  draft: 'badge-neutral',
-  pending: 'badge-warning',
-  sent: 'badge-info',
-  void: 'badge-danger',
-  refund: 'badge-warning',
-  rejected: 'badge-danger',
-  cancelled: 'badge-danger',
-  closed: 'badge-neutral',
-  inactive: 'badge-neutral',
-  cash: 'badge-success',
-  card: 'badge-info',
-  transfer: 'badge-neutral',
-  khqr: 'badge-warning'
+  active: 'badge badge-success',
+  completed: 'badge badge-success',
+  received: 'badge badge-success',
+  approved: 'badge badge-success',
+  paid: 'badge badge-success',
+  open: 'badge badge-info',
+  draft: 'badge badge-neutral',
+  pending: 'badge badge-warning',
+  sent: 'badge badge-info',
+  void: 'badge badge-error',
+  refund: 'badge badge-warning',
+  rejected: 'badge badge-error',
+  cancelled: 'badge badge-error',
+  closed: 'badge badge-neutral',
+  inactive: 'badge badge-neutral',
+  cash: 'badge badge-success',
+  card: 'badge badge-info',
+  transfer: 'badge badge-neutral',
+  khqr: 'badge badge-warning'
 };
 
 function toLabel(value?: string | null) {
@@ -38,7 +36,7 @@ function toLabel(value?: string | null) {
 
 export function StatusBadge({ value }: StatusBadgeProps) {
   const normalized = value?.toLowerCase() ?? 'unknown';
-  const toneClass = palette[normalized] ?? 'badge-neutral';
+  const toneClass = palette[normalized] ?? 'badge badge-neutral';
 
-  return <span className={cn('badge', toneClass)}>{toLabel(value)}</span>;
+  return <span className={toneClass}>{toLabel(value)}</span>;
 }

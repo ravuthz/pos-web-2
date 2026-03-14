@@ -142,7 +142,7 @@ export function StockMovementsPage() {
               </div>
               <button
                 type="button"
-                className="btn btn-ghost btn-icon"
+                className="btn btn-ghost btn-sm btn-square"
                 onClick={() => crudTabs.closeTab(activeEditorTab.id)}
               >
                 <X className="h-4 w-4" />
@@ -242,7 +242,7 @@ export function StockMovementsPage() {
             )}
           </section>
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-surface-200">
+          <div className="app-table-shell">
             <DataTable
               data={movements}
               keyExtractor={(movement) => movement.id}

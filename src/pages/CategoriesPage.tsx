@@ -148,7 +148,7 @@ export function CategoriesPage() {
                   : 'Create a new product category for the selected branch.'}
               </p>
             </div>
-            <button type="button" className="btn btn-ghost btn-icon" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
+            <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -259,7 +259,7 @@ export function CategoriesPage() {
           }}
         />
 
-        <div className="overflow-hidden rounded-2xl border border-surface-200">
+        <div className="app-table-shell">
           <DataTable
             data={categories}
             keyExtractor={(category) => category.id}
@@ -303,12 +303,12 @@ export function CategoriesPage() {
                 header: 'Actions',
                 cell: (category) => (
                   <div className="flex items-center gap-2">
-                    <button type="button" className="btn btn-secondary btn-icon" title="Edit" onClick={() => crudTabs.openEditTab(category)}>
+                    <button type="button" className="btn btn-secondary btn-sm btn-square" title="Edit" onClick={() => crudTabs.openEditTab(category)}>
                       <Pencil className="h-4 w-4" />
                     </button>
                     <button
                       type="button"
-                      className="btn btn-danger btn-icon"
+                      className="btn btn-error btn-sm btn-square"
                       title="Delete"
                       onClick={() => {
                         if (window.confirm(`Delete category "${category.name}"?`)) {

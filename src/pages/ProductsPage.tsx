@@ -1,11 +1,10 @@
 import { useDeferredValue, useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Trash2, X } from 'lucide-react';
+import { Pencil, Search, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { CrudTabs } from '@/components/ui/CrudTabs';
 import { DataTable } from '@/components/ui/DataTable';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
-import { PageHeader } from '@/components/ui/PageHeader';
 import { CRUD_MAIN_TAB_ID, type CrudEditorTab, useCrudTabs } from '@/lib/crudTabs';
 import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS, getPaginationMeta } from '@/lib/pagination';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -154,6 +153,9 @@ export function ProductsPage() {
   const isProductReferencesInitialLoad =
     (categoriesQuery.isLoading && !categoriesQuery.data) || (vendorsQuery.isLoading && !vendorsQuery.data);
   const activeEditorTab = crudTabs.activeEditorTab;
+  const inputClass = 'input input-bordered w-full';
+  const selectClass = 'select select-bordered w-full';
+  const textareaClass = 'textarea textarea-bordered min-h-28 w-full';
   const tabItems = [
     { id: CRUD_MAIN_TAB_ID, type: 'main' as const, title: 'Products' },
     ...crudTabs.tabs.map((tab) => ({ id: tab.id, type: tab.type, title: tab.title }))
@@ -181,11 +183,6 @@ export function ProductsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Products"
-        subtitle="Catalog, pricing, stock thresholds, and branch-linked product records."
-      />
-
       <CrudTabs
         activeTabId={crudTabs.activeTabId}
         tabs={tabItems}
@@ -194,381 +191,389 @@ export function ProductsPage() {
         onCreateTab={crudTabs.openCreateTab}
       >
         {activeEditorTab ? (
-          <section className="card space-y-4">
-          <div className="card-header mb-0">
-            <div>
-              <h2 className="text-lg font-semibold text-surface-900">
-                {activeEditorTab.type === 'edit' ? 'Edit product' : 'Create product'}
-              </h2>
-              <p className="text-sm text-surface-500">
-                {activeEditorTab.type === 'edit'
-                  ? 'Update pricing, status, and stock rules.'
-                  : 'Create a product for the selected branch inventory.'}
-              </p>
-            </div>
-            <button type="button" className="btn btn-ghost btn-icon" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
-              <X className="h-4 w-4" />
-            </button>
-          </div>
+          <section className="card border border-base-300 bg-base-100 shadow-sm">
+            <div className="card-body gap-5">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div className="space-y-1">
+                  <h2 className="card-title text-xl">
+                    {activeEditorTab.type === 'edit' ? 'Edit product' : 'Create product'}
+                  </h2>
+                  <p className="text-sm text-base-content/65">
+                    {activeEditorTab.type === 'edit'
+                      ? 'Update pricing, status, and stock rules.'
+                      : 'Create a product for the selected branch inventory.'}
+                  </p>
+                </div>
+                <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
 
-          {activeEditorTab.type === 'create' && !selectedBranchId ? (
-            <EmptyState
-              title="Branch required"
-              message="Pick a branch from the header before creating a product."
-            />
-          ) : (
-            <form
-              className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                saveMutation.mutate(activeEditorTab);
-              }}
-            >
-              <div>
-                <label className="label" htmlFor="product-category">
-                  Category
-                </label>
-                <select
-                  id="product-category"
-                  className="input"
-                  value={activeEditorTab.form.category_id}
-                  onChange={(event) =>
-                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, category_id: event.target.value }))
-                  }
-                  required
+              {activeEditorTab.type === 'create' && !selectedBranchId ? (
+                <EmptyState
+                  title="Branch required"
+                  message="Pick a branch from the header before creating a product."
+                />
+              ) : (
+                <form
+                  className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    saveMutation.mutate(activeEditorTab);
+                  }}
                 >
-                  <option value="">Select category</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="label" htmlFor="product-vendor">
-                  Vendor
-                </label>
-                <select
-                  id="product-vendor"
-                  className="input"
-                  value={activeEditorTab.form.vendor_id}
-                  onChange={(event) =>
-                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, vendor_id: event.target.value }))
-                  }
-                >
-                  <option value="">No vendor</option>
-                  {vendors.map((vendor) => (
-                    <option key={vendor.id} value={vendor.id}>
-                      {vendor.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="label" htmlFor="product-status">
-                  Status
-                </label>
-                <select
-                  id="product-status"
-                  className="input"
-                  value={activeEditorTab.form.status}
-                  onChange={(event) =>
-                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
-                      ...current,
-                      status: event.target.value as 'active' | 'inactive'
-                    }))
-                  }
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-
-              <div className="xl:col-span-2">
-                <label className="label" htmlFor="product-name">
-                  Product name
-                </label>
-                <input
-                  id="product-name"
-                  className="input"
-                  value={activeEditorTab.form.name}
-                  onChange={(event) =>
-                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, name: event.target.value }))
-                  }
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="label" htmlFor="product-code">
-                  Code
-                </label>
-                <input
-                  id="product-code"
-                  className="input"
-                  value={activeEditorTab.form.code}
-                  onChange={(event) =>
-                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, code: event.target.value }))
-                  }
-                />
-              </div>
-
-              <div>
-                <label className="label" htmlFor="product-barcode">
-                  Barcode
-                </label>
-                <input
-                  id="product-barcode"
-                  className="input"
-                  value={activeEditorTab.form.barcode}
-                  onChange={(event) =>
-                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, barcode: event.target.value }))
-                  }
-                />
-              </div>
-
-              <div>
-                <label className="label" htmlFor="product-cost">
-                  Cost price
-                </label>
-                <input
-                  id="product-cost"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="input"
-                  value={activeEditorTab.form.cost_price}
-                  onChange={(event) =>
-                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, cost_price: event.target.value }))
-                  }
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="label" htmlFor="product-selling">
-                  Selling price
-                </label>
-                <input
-                  id="product-selling"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="input"
-                  value={activeEditorTab.form.selling_price}
-                  onChange={(event) =>
-                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, selling_price: event.target.value }))
-                  }
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="label" htmlFor="product-low-stock">
-                  Low stock alert
-                </label>
-                <input
-                  id="product-low-stock"
-                  type="number"
-                  min="0"
-                  className="input"
-                  value={activeEditorTab.form.low_stock_alert}
-                  onChange={(event) =>
-                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, low_stock_alert: event.target.value }))
-                  }
-                />
-              </div>
-
-              <div className="flex items-center gap-3 rounded-2xl border border-surface-200 px-4 py-3">
-                <input
-                  id="product-expiry-toggle"
-                  type="checkbox"
-                  checked={activeEditorTab.form.track_expiry}
-                  onChange={(event) =>
-                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
-                      ...current,
-                      track_expiry: event.target.checked,
-                      expiry_date: event.target.checked ? current.expiry_date : ''
-                    }))
-                  }
-                />
-                <label htmlFor="product-expiry-toggle" className="text-sm text-surface-700">
-                  Track expiry
-                </label>
-              </div>
-
-              <div>
-                <label className="label" htmlFor="product-expiry-date">
-                  Expiry date
-                </label>
-                <input
-                  id="product-expiry-date"
-                  type="date"
-                  className="input"
-                  value={activeEditorTab.form.expiry_date}
-                  onChange={(event) =>
-                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, expiry_date: event.target.value }))
-                  }
-                  disabled={!activeEditorTab.form.track_expiry}
-                />
-              </div>
-
-              <div className="md:col-span-2 xl:col-span-3">
-                <label className="label" htmlFor="product-description">
-                  Description
-                </label>
-                <textarea
-                  id="product-description"
-                  className="input min-h-28"
-                  value={activeEditorTab.form.description}
-                  onChange={(event) =>
-                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, description: event.target.value }))
-                  }
-                />
-              </div>
-
-              <div className="md:col-span-2 xl:col-span-3 flex flex-wrap gap-3">
-              <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
-                {saveMutation.isPending
-                  ? 'Saving...'
-                  : activeEditorTab.type === 'edit'
-                      ? 'Update product'
-                      : 'Create product'}
-              </button>
-              <button type="button" className="btn btn-secondary" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
-                Cancel
-              </button>
-            </div>
-          </form>
-          )}
-        </section>
-        ) : (
-          <div className="space-y-4">
-        <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-          <input
-            className="input"
-            placeholder="Search by name, code, or barcode"
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
-          />
-          <label className="flex items-center gap-2 rounded-2xl border border-surface-200 px-4 py-2.5 text-sm text-surface-700">
-            <input
-              type="checkbox"
-              checked={lowStockOnly}
-              onChange={(event) => {
-                setLowStockOnly(event.target.checked);
-                setPage(1);
-              }}
-            />
-            Low stock only
-          </label>
-        </div>
-
-        <div className="overflow-hidden rounded-2xl border border-surface-200">
-          <DataTable
-            data={products}
-            keyExtractor={(product) => product.id}
-            emptyMessage="No products matched the current filters."
-            isUpdating={productsQuery.isFetching}
-            updateLabel="Refreshing products..."
-            pagination={{
-              page,
-              pageSize,
-              totalItems: productsMeta.totalItems,
-              totalPages: productsMeta.totalPages,
-              pageSizeOptions: TABLE_PAGE_SIZE_OPTIONS,
-              onPageChange: setPage,
-              onPageSizeChange: (nextPageSize) => {
-                setPageSize(nextPageSize);
-                setPage(1);
-              }
-            }}
-            columns={[
-              {
-                header: 'Image',
-                cell: (product) => {
-                  const imageUrl = resolveAssetUrl(product.image ?? product.image_url);
-
-                  return imageUrl ? (
-                    <img
-                      src={imageUrl}
-                      alt={product.name}
-                      className="h-12 w-12 rounded-2xl object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-100 text-[11px] font-medium text-surface-500">
-                      N/A
-                    </div>
-                  );
-                }
-              },
-              {
-                header: 'Product',
-                cell: (product) => <p className="font-medium text-surface-900">{product.name}</p>
-              },
-              {
-                header: 'Code',
-                cell: (product) => (
-                  <span className="font-mono text-xs text-surface-600">{product.code ?? '-'}</span>
-                )
-              },
-              {
-                header: 'Barcode',
-                cell: (product) => (
-                  <span className="font-mono text-xs text-surface-600">{product.barcode ?? '-'}</span>
-                )
-              },
-              {
-                header: 'Category',
-                cell: (product) => product.category?.name ?? 'Uncategorized'
-              },
-              {
-                header: 'Price',
-                cell: (product) => formatCurrency(Number(product.selling_price ?? 0))
-              },
-              {
-                header: 'Stock',
-                cell: (product) => formatNumber(product.stock?.quantity_on_hand ?? 0)
-              },
-              {
-                header: 'Status',
-                cell: (product) => (
-                  <StatusBadge value={product.status ?? (product.is_active ? 'active' : 'inactive')} />
-                )
-              },
-              {
-                header: 'Actions',
-                cell: (product) => (
-                  <div className="flex items-center gap-2">
-                    <button type="button" className="btn btn-secondary btn-icon" title="Edit" onClick={() => crudTabs.openEditTab(product)}>
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-danger btn-icon"
-                      title="Delete"
-                      onClick={() => {
-                        if (window.confirm(`Delete product "${product.name}"?`)) {
-                          deleteMutation.mutate(product.id);
-                        }
-                      }}
-                      disabled={deleteMutation.isPending}
+                  <fieldset className="fieldset">
+                    <legend className="fieldset-legend">Category</legend>
+                    <select
+                      id="product-category"
+                      className={selectClass}
+                      value={activeEditorTab.form.category_id}
+                      onChange={(event) =>
+                        crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, category_id: event.target.value }))
+                      }
+                      required
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <option value="">Select category</option>
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </fieldset>
+
+                  <fieldset className="fieldset">
+                    <legend className="fieldset-legend">Vendor</legend>
+                    <select
+                      id="product-vendor"
+                      className={selectClass}
+                      value={activeEditorTab.form.vendor_id}
+                      onChange={(event) =>
+                        crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, vendor_id: event.target.value }))
+                      }
+                    >
+                      <option value="">No vendor</option>
+                      {vendors.map((vendor) => (
+                        <option key={vendor.id} value={vendor.id}>
+                          {vendor.name}
+                        </option>
+                      ))}
+                    </select>
+                  </fieldset>
+
+                  <fieldset className="fieldset">
+                    <legend className="fieldset-legend">Status</legend>
+                    <select
+                      id="product-status"
+                      className={selectClass}
+                      value={activeEditorTab.form.status}
+                      onChange={(event) =>
+                        crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
+                          ...current,
+                          status: event.target.value as 'active' | 'inactive'
+                        }))
+                      }
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </fieldset>
+
+                  <fieldset className="fieldset xl:col-span-2">
+                    <legend className="fieldset-legend">Product name</legend>
+                    <input
+                      id="product-name"
+                      className={inputClass}
+                      value={activeEditorTab.form.name}
+                      onChange={(event) =>
+                        crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, name: event.target.value }))
+                      }
+                      required
+                    />
+                  </fieldset>
+
+                  <fieldset className="fieldset">
+                    <legend className="fieldset-legend">Code</legend>
+                    <input
+                      id="product-code"
+                      className={inputClass}
+                      value={activeEditorTab.form.code}
+                      onChange={(event) =>
+                        crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, code: event.target.value }))
+                      }
+                    />
+                  </fieldset>
+
+                  <fieldset className="fieldset">
+                    <legend className="fieldset-legend">Barcode</legend>
+                    <input
+                      id="product-barcode"
+                      className={inputClass}
+                      value={activeEditorTab.form.barcode}
+                      onChange={(event) =>
+                        crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, barcode: event.target.value }))
+                      }
+                    />
+                  </fieldset>
+
+                  <fieldset className="fieldset">
+                    <legend className="fieldset-legend">Cost price</legend>
+                    <input
+                      id="product-cost"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className={inputClass}
+                      value={activeEditorTab.form.cost_price}
+                      onChange={(event) =>
+                        crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, cost_price: event.target.value }))
+                      }
+                      required
+                    />
+                  </fieldset>
+
+                  <fieldset className="fieldset">
+                    <legend className="fieldset-legend">Selling price</legend>
+                    <input
+                      id="product-selling"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className={inputClass}
+                      value={activeEditorTab.form.selling_price}
+                      onChange={(event) =>
+                        crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, selling_price: event.target.value }))
+                      }
+                      required
+                    />
+                  </fieldset>
+
+                  <fieldset className="fieldset">
+                    <legend className="fieldset-legend">Low stock alert</legend>
+                    <input
+                      id="product-low-stock"
+                      type="number"
+                      min="0"
+                      className={inputClass}
+                      value={activeEditorTab.form.low_stock_alert}
+                      onChange={(event) =>
+                        crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, low_stock_alert: event.target.value }))
+                      }
+                    />
+                  </fieldset>
+
+                  <label className="card border border-base-300 bg-base-200/60 xl:col-span-2">
+                    <div className="card-body flex-row items-center gap-4 p-4">
+                      <input
+                        id="product-expiry-toggle"
+                        type="checkbox"
+                        className="checkbox checkbox-sm"
+                        checked={activeEditorTab.form.track_expiry}
+                        onChange={(event) =>
+                          crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
+                            ...current,
+                            track_expiry: event.target.checked,
+                            expiry_date: event.target.checked ? current.expiry_date : ''
+                          }))
+                        }
+                      />
+                      <div>
+                        <p className="font-medium text-base-content">Track expiry</p>
+                        <p className="text-sm text-base-content/60">Enable expiry-date tracking for perishable stock.</p>
+                      </div>
+                    </div>
+                  </label>
+
+                  <fieldset className="fieldset">
+                    <legend className="fieldset-legend">Expiry date</legend>
+                    <input
+                      id="product-expiry-date"
+                      type="date"
+                      className={inputClass}
+                      value={activeEditorTab.form.expiry_date}
+                      onChange={(event) =>
+                        crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, expiry_date: event.target.value }))
+                      }
+                      disabled={!activeEditorTab.form.track_expiry}
+                    />
+                  </fieldset>
+
+                  <fieldset className="fieldset md:col-span-2 xl:col-span-3">
+                    <legend className="fieldset-legend">Description</legend>
+                    <textarea
+                      id="product-description"
+                      className={textareaClass}
+                      value={activeEditorTab.form.description}
+                      onChange={(event) =>
+                        crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, description: event.target.value }))
+                      }
+                    />
+                  </fieldset>
+
+                  <div className="card-actions md:col-span-2 xl:col-span-3 justify-end gap-3 pt-2">
+                    <button type="button" className="btn btn-ghost" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
+                      Cancel
+                    </button>
+                    <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
+                      {saveMutation.isPending
+                        ? 'Saving...'
+                        : activeEditorTab.type === 'edit'
+                          ? 'Update product'
+                          : 'Create product'}
                     </button>
                   </div>
-                )
-              }
-            ]}
-          />
-        </div>
+                </form>
+              )}
+            </div>
+          </section>
+        ) : (
+          <div className="space-y-4">
+            <div className="card border border-base-300 bg-base-100 shadow-sm">
+              <div className="card-body gap-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                  <label className="input input-bordered flex w-full items-center gap-2 lg:flex-1">
+                    <Search className="h-4 w-4 opacity-60" />
+                    <input
+                      className="grow bg-transparent outline-none"
+                      placeholder="Search by name, code, or barcode"
+                      value={search}
+                      onChange={(event) => {
+                        setSearch(event.target.value);
+                        setPage(1);
+                      }}
+                    />
+                  </label>
+                  <label className="flex items-center gap-3 rounded-box border border-base-300 bg-base-200/60 px-4 py-3">
+                    <input
+                      type="checkbox"
+                      className="checkbox checkbox-sm"
+                      checked={lowStockOnly}
+                      onChange={(event) => {
+                        setLowStockOnly(event.target.checked);
+                        setPage(1);
+                      }}
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-base-content">Low stock only</p>
+                      <p className="text-xs text-base-content/55">Focus on products that need replenishment.</p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="card border border-base-300 bg-base-100 shadow-sm">
+              <div className="card-body p-0">
+                <DataTable
+                  data={products}
+                  keyExtractor={(product) => product.id}
+                  emptyMessage="No products matched the current filters."
+                  isUpdating={productsQuery.isFetching}
+                  updateLabel="Refreshing products..."
+                  pagination={{
+                    page,
+                    pageSize,
+                    totalItems: productsMeta.totalItems,
+                    totalPages: productsMeta.totalPages,
+                    pageSizeOptions: TABLE_PAGE_SIZE_OPTIONS,
+                    onPageChange: setPage,
+                    onPageSizeChange: (nextPageSize) => {
+                      setPageSize(nextPageSize);
+                      setPage(1);
+                    }
+                  }}
+                  columns={[
+                    {
+                      header: 'Image',
+                      cell: (product) => {
+                        const imageUrl = resolveAssetUrl(product.image ?? product.image_url);
+
+                        return imageUrl ? (
+                          <div className="avatar">
+                            <div className="h-12 w-12 rounded-box">
+                              <img
+                                src={imageUrl}
+                                alt={product.name}
+                                className="h-12 w-12 object-cover"
+                                loading="lazy"
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="avatar placeholder">
+                            <div className="h-12 w-12 rounded-box bg-base-200 text-[11px] font-medium text-base-content/50">
+                              <span>N/A</span>
+                            </div>
+                          </div>
+                        );
+                      }
+                    },
+                    {
+                      header: 'Product',
+                      cell: (product) => (
+                        <div className="space-y-1">
+                          <p className="font-semibold text-base-content">{product.name}</p>
+                          <p className="text-xs text-base-content/55">{product.description || 'No description'}</p>
+                        </div>
+                      )
+                    },
+                    {
+                      header: 'Code',
+                      cell: (product) => (
+                        <span className="badge badge-ghost font-mono">{product.code ?? '-'}</span>
+                      )
+                    },
+                    {
+                      header: 'Barcode',
+                      cell: (product) => (
+                        <span className="badge badge-ghost font-mono">{product.barcode ?? '-'}</span>
+                      )
+                    },
+                    {
+                      header: 'Category',
+                      cell: (product) => <span className="badge badge-outline">{product.category?.name ?? 'Uncategorized'}</span>
+                    },
+                    {
+                      header: 'Price',
+                      cell: (product) => <span className="font-semibold">{formatCurrency(Number(product.selling_price ?? 0))}</span>
+                    },
+                    {
+                      header: 'Stock',
+                      cell: (product) => <span className="badge badge-neutral">{formatNumber(product.stock?.quantity_on_hand ?? 0)}</span>
+                    },
+                    {
+                      header: 'Status',
+                      cell: (product) => (
+                        <StatusBadge value={product.status ?? (product.is_active ? 'active' : 'inactive')} />
+                      )
+                    },
+                    {
+                      header: 'Actions',
+                      cell: (product) => (
+                        <div className="flex items-center gap-2">
+                          <button type="button" className="btn btn-secondary btn-sm btn-square" title="Edit" onClick={() => crudTabs.openEditTab(product)}>
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-error btn-sm btn-square"
+                            title="Delete"
+                            onClick={() => {
+                              if (window.confirm(`Delete product "${product.name}"?`)) {
+                                deleteMutation.mutate(product.id);
+                              }
+                            }}
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )
+                    }
+                  ]}
+                />
+              </div>
+            </div>
           </div>
         )}
       </CrudTabs>
