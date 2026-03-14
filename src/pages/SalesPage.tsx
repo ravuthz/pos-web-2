@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { DataTable } from '@/components/ui/DataTable';
+import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS, getPaginationMeta } from '@/lib/pagination';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatCard } from '@/components/ui/StatCard';
 import { ErrorState, LoadingState } from '@/components/ui/States';
@@ -11,16 +13,28 @@ import type { Sale } from '@/types/api';
 
 export function SalesPage() {
   const selectedBranchId = useBranchStore((state) => state.selectedBranchId);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_TABLE_PAGE_SIZE);
 
   const salesQuery = useQuery({
-    queryKey: ['sales', selectedBranchId],
-    queryFn: () => saleService.getAll({ branch_id: selectedBranchId ?? undefined, per_page: 50 })
+    queryKey: ['sales', selectedBranchId, page, pageSize],
+    queryFn: () =>
+      saleService.getAll({
+        branch_id: selectedBranchId ?? undefined,
+        page,
+        per_page: pageSize
+      }),
+    placeholderData: (previousData) => previousData
   });
 
   const summaryQuery = useQuery({
     queryKey: ['sales-summary', selectedBranchId],
     queryFn: () => saleService.getSummary({ branch_id: selectedBranchId ?? undefined })
   });
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedBranchId]);
 
   if (salesQuery.isLoading || summaryQuery.isLoading) {
     return <LoadingState label="Loading sales..." />;
@@ -35,6 +49,7 @@ export function SalesPage() {
   }
 
   const sales = (salesQuery.data?.data ?? []) as Sale[];
+  const salesMeta = getPaginationMeta(salesQuery.data?.meta);
   const summary = (summaryQuery.data ?? {}) as {
     today?: { total?: number; count?: number; average?: number };
     this_month?: { total?: number; count?: number; average?: number };
@@ -71,6 +86,20 @@ export function SalesPage() {
           data={sales}
           keyExtractor={(sale) => sale.id}
           emptyMessage="No sales found for the current branch scope."
+          isUpdating={salesQuery.isFetching}
+          updateLabel="Refreshing sales..."
+          pagination={{
+            page,
+            pageSize,
+            totalItems: salesMeta.totalItems,
+            totalPages: salesMeta.totalPages,
+            pageSizeOptions: TABLE_PAGE_SIZE_OPTIONS,
+            onPageChange: setPage,
+            onPageSizeChange: (nextPageSize) => {
+              setPageSize(nextPageSize);
+              setPage(1);
+            }
+          }}
           columns={[
             {
               header: 'Invoice',

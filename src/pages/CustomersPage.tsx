@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { DataTable } from '@/components/ui/DataTable';
 import { ErrorState, LoadingState } from '@/components/ui/States';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS, getPaginationMeta } from '@/lib/pagination';
 import { customerService } from '@/services/customer';
 import { extractApiError } from '@/lib/api';
 import type { Customer } from '@/types/api';
@@ -26,14 +27,22 @@ const emptyForm: CustomerFormState = {
 export function CustomersPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [form, setForm] = useState<CustomerFormState>(emptyForm);
   const deferredSearch = useDeferredValue(search);
 
   const customersQuery = useQuery({
-    queryKey: ['customers', deferredSearch],
-    queryFn: () => customerService.getAll({ per_page: 50, search: deferredSearch || undefined })
+    queryKey: ['customers', deferredSearch, page, pageSize],
+    queryFn: () =>
+      customerService.getAll({
+        page,
+        per_page: pageSize,
+        search: deferredSearch || undefined
+      }),
+    placeholderData: (previousData) => previousData
   });
 
   const saveMutation = useMutation({
@@ -73,6 +82,8 @@ export function CustomersPage() {
   });
 
   const customers = (customersQuery.data?.data ?? []) as Customer[];
+  const customersMeta = getPaginationMeta(customersQuery.data?.meta);
+  const isCustomersInitialLoad = customersQuery.isLoading && !customersQuery.data;
 
   function resetEditor() {
     setIsEditorOpen(false);
@@ -97,11 +108,11 @@ export function CustomersPage() {
     setIsEditorOpen(true);
   }
 
-  if (customersQuery.isLoading) {
+  if (isCustomersInitialLoad) {
     return <LoadingState label="Loading customers..." />;
   }
 
-  if (customersQuery.isError) {
+  if (customersQuery.isError && !customersQuery.data) {
     return <ErrorState message={customersQuery.error.message} />;
   }
 
@@ -214,7 +225,10 @@ export function CustomersPage() {
           className="input"
           placeholder="Search customers"
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setPage(1);
+          }}
         />
 
         <div className="mt-4 overflow-hidden rounded-2xl border border-surface-200">
@@ -222,6 +236,20 @@ export function CustomersPage() {
             data={customers}
             keyExtractor={(customer) => customer.id}
             emptyMessage="No customers matched the current search."
+            isUpdating={customersQuery.isFetching}
+            updateLabel="Refreshing customers..."
+            pagination={{
+              page,
+              pageSize,
+              totalItems: customersMeta.totalItems,
+              totalPages: customersMeta.totalPages,
+              pageSizeOptions: TABLE_PAGE_SIZE_OPTIONS,
+              onPageChange: setPage,
+              onPageSizeChange: (nextPageSize) => {
+                setPageSize(nextPageSize);
+                setPage(1);
+              }
+            }}
             columns={[
               {
                 header: 'Customer',

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { DataTable } from '@/components/ui/DataTable';
 import { ErrorState, LoadingState } from '@/components/ui/States';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS, getPaginationMeta } from '@/lib/pagination';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { branchService } from '@/services/branch';
 import { roleService } from '@/services/role';
@@ -43,14 +44,22 @@ const emptyForm: UserFormState = {
 export function UsersPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [form, setForm] = useState<UserFormState>(emptyForm);
   const deferredSearch = useDeferredValue(search);
 
   const usersQuery = useQuery({
-    queryKey: ['users', deferredSearch],
-    queryFn: () => userService.getAll({ per_page: 50, search: deferredSearch || undefined })
+    queryKey: ['users', deferredSearch, page, pageSize],
+    queryFn: () =>
+      userService.getAll({
+        page,
+        per_page: pageSize,
+        search: deferredSearch || undefined
+      }),
+    placeholderData: (previousData) => previousData
   });
 
   const rolesQuery = useQuery({
@@ -116,6 +125,10 @@ export function UsersPage() {
   const users = (usersQuery.data?.data ?? []) as User[];
   const roles = rolesQuery.data ?? [];
   const branches = branchesQuery.data ?? [];
+  const usersMeta = getPaginationMeta(usersQuery.data?.meta);
+  const isUsersInitialLoad = usersQuery.isLoading && !usersQuery.data;
+  const isUserReferencesInitialLoad =
+    (rolesQuery.isLoading && !rolesQuery.data) || (branchesQuery.isLoading && !branchesQuery.data);
 
   function resetEditor() {
     setIsEditorOpen(false);
@@ -164,19 +177,19 @@ export function UsersPage() {
     });
   }
 
-  if (usersQuery.isLoading || rolesQuery.isLoading || branchesQuery.isLoading) {
+  if (isUsersInitialLoad || isUserReferencesInitialLoad) {
     return <LoadingState label="Loading users..." />;
   }
 
-  if (usersQuery.isError) {
+  if (usersQuery.isError && !usersQuery.data) {
     return <ErrorState message={usersQuery.error.message} />;
   }
 
-  if (rolesQuery.isError) {
+  if (rolesQuery.isError && !rolesQuery.data) {
     return <ErrorState message={rolesQuery.error.message} />;
   }
 
-  if (branchesQuery.isError) {
+  if (branchesQuery.isError && !branchesQuery.data) {
     return <ErrorState message={branchesQuery.error.message} />;
   }
 
@@ -415,7 +428,10 @@ export function UsersPage() {
           className="input"
           placeholder="Search users by name, username, or email"
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setPage(1);
+          }}
         />
 
         <div className="mt-4 overflow-hidden rounded-2xl border border-surface-200">
@@ -423,6 +439,20 @@ export function UsersPage() {
             data={users}
             keyExtractor={(user) => user.id}
             emptyMessage="No users matched the current search."
+            isUpdating={usersQuery.isFetching}
+            updateLabel="Refreshing users..."
+            pagination={{
+              page,
+              pageSize,
+              totalItems: usersMeta.totalItems,
+              totalPages: usersMeta.totalPages,
+              pageSizeOptions: TABLE_PAGE_SIZE_OPTIONS,
+              onPageChange: setPage,
+              onPageSizeChange: (nextPageSize) => {
+                setPageSize(nextPageSize);
+                setPage(1);
+              }
+            }}
             columns={[
               {
                 header: 'User',

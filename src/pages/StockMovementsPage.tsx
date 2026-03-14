@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { DataTable } from '@/components/ui/DataTable';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS, getPaginationMeta } from '@/lib/pagination';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { productService } from '@/services/product';
 import { stockMovementService } from '@/services/stockMovement';
@@ -28,16 +29,20 @@ const emptyForm: AdjustmentFormState = {
 export function StockMovementsPage() {
   const queryClient = useQueryClient();
   const selectedBranchId = useBranchStore((state) => state.selectedBranchId);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [form, setForm] = useState<AdjustmentFormState>(emptyForm);
 
   const stockQuery = useQuery({
-    queryKey: ['stock-movements', selectedBranchId],
+    queryKey: ['stock-movements', selectedBranchId, page, pageSize],
     queryFn: () =>
       stockMovementService.getAll({
         branch_id: selectedBranchId ?? undefined,
-        per_page: 50
-      })
+        page,
+        per_page: pageSize
+      }),
+    placeholderData: (previousData) => previousData
   });
 
   const productsQuery = useQuery({
@@ -49,6 +54,10 @@ export function StockMovementsPage() {
       }),
     enabled: Boolean(selectedBranchId)
   });
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedBranchId]);
 
   const adjustMutation = useMutation({
     mutationFn: async (payload: AdjustmentFormState) => {
@@ -89,6 +98,7 @@ export function StockMovementsPage() {
   }
 
   const movements = (stockQuery.data?.data ?? []) as StockMovement[];
+  const stockMeta = getPaginationMeta(stockQuery.data?.meta);
   const products = ((productsQuery.data?.data ?? []) as Product[]).sort((a, b) =>
     a.name.localeCompare(b.name)
   );
@@ -216,6 +226,20 @@ export function StockMovementsPage() {
           data={movements}
           keyExtractor={(movement) => movement.id}
           emptyMessage="No stock movements found."
+          isUpdating={stockQuery.isFetching}
+          updateLabel="Refreshing stock movements..."
+          pagination={{
+            page,
+            pageSize,
+            totalItems: stockMeta.totalItems,
+            totalPages: stockMeta.totalPages,
+            pageSizeOptions: TABLE_PAGE_SIZE_OPTIONS,
+            onPageChange: setPage,
+            onPageSizeChange: (nextPageSize) => {
+              setPageSize(nextPageSize);
+              setPage(1);
+            }
+          }}
           columns={[
             {
               header: 'Product',

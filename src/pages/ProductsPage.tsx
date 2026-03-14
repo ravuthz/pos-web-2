@@ -1,17 +1,18 @@
-import { useDeferredValue, useState } from 'react';
+import { useDeferredValue, useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { DataTable } from '@/components/ui/DataTable';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS, getPaginationMeta } from '@/lib/pagination';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { categoryService } from '@/services/category';
 import { productService } from '@/services/product';
 import { vendorService } from '@/services/vendor';
 import { useBranchStore } from '@/store/branch';
 import { extractApiError } from '@/lib/api';
-import { formatCurrency, formatNumber } from '@/lib/utils';
+import { formatCurrency, formatNumber, resolveAssetUrl } from '@/lib/utils';
 import type { Product } from '@/types/api';
 
 interface ProductFormState {
@@ -48,6 +49,8 @@ export function ProductsPage() {
   const queryClient = useQueryClient();
   const selectedBranchId = useBranchStore((state) => state.selectedBranchId);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const [lowStockOnly, setLowStockOnly] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -55,13 +58,16 @@ export function ProductsPage() {
   const deferredSearch = useDeferredValue(search);
 
   const productsQuery = useQuery({
-    queryKey: ['products', deferredSearch, lowStockOnly],
+    queryKey: ['products', selectedBranchId, deferredSearch, lowStockOnly, page, pageSize],
     queryFn: () =>
       productService.getAll({
-        per_page: 50,
+        branch_id: selectedBranchId ?? undefined,
+        page,
+        per_page: pageSize,
         search: deferredSearch || undefined,
         low_stock: lowStockOnly || undefined
-      })
+      }),
+    placeholderData: (previousData) => previousData
   });
 
   const categoriesQuery = useQuery({
@@ -126,6 +132,14 @@ export function ProductsPage() {
   const products = (productsQuery.data?.data ?? []) as Product[];
   const categories = categoriesQuery.data?.data ?? [];
   const vendors = vendorsQuery.data?.data ?? [];
+  const productsMeta = getPaginationMeta(productsQuery.data?.meta);
+  const isProductsInitialLoad = productsQuery.isLoading && !productsQuery.data;
+  const isProductReferencesInitialLoad =
+    (categoriesQuery.isLoading && !categoriesQuery.data) || (vendorsQuery.isLoading && !vendorsQuery.data);
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedBranchId]);
 
   function resetEditor() {
     setIsEditorOpen(false);
@@ -158,19 +172,19 @@ export function ProductsPage() {
     setIsEditorOpen(true);
   }
 
-  if (productsQuery.isLoading || categoriesQuery.isLoading || vendorsQuery.isLoading) {
+  if (isProductsInitialLoad || isProductReferencesInitialLoad) {
     return <LoadingState label="Loading products..." />;
   }
 
-  if (productsQuery.isError) {
+  if (productsQuery.isError && !productsQuery.data) {
     return <ErrorState message={productsQuery.error.message} />;
   }
 
-  if (categoriesQuery.isError) {
+  if (categoriesQuery.isError && !categoriesQuery.data) {
     return <ErrorState message={categoriesQuery.error.message} />;
   }
 
-  if (vendorsQuery.isError) {
+  if (vendorsQuery.isError && !vendorsQuery.data) {
     return <ErrorState message={vendorsQuery.error.message} />;
   }
 
@@ -435,13 +449,19 @@ export function ProductsPage() {
             className="input"
             placeholder="Search by name, code, or barcode"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
           />
           <label className="flex items-center gap-2 rounded-2xl border border-surface-200 px-4 py-2.5 text-sm text-surface-700">
             <input
               type="checkbox"
               checked={lowStockOnly}
-              onChange={(event) => setLowStockOnly(event.target.checked)}
+              onChange={(event) => {
+                setLowStockOnly(event.target.checked);
+                setPage(1);
+              }}
             />
             Low stock only
           </label>
@@ -452,7 +472,40 @@ export function ProductsPage() {
             data={products}
             keyExtractor={(product) => product.id}
             emptyMessage="No products matched the current filters."
+            isUpdating={productsQuery.isFetching}
+            updateLabel="Refreshing products..."
+            pagination={{
+              page,
+              pageSize,
+              totalItems: productsMeta.totalItems,
+              totalPages: productsMeta.totalPages,
+              pageSizeOptions: TABLE_PAGE_SIZE_OPTIONS,
+              onPageChange: setPage,
+              onPageSizeChange: (nextPageSize) => {
+                setPageSize(nextPageSize);
+                setPage(1);
+              }
+            }}
             columns={[
+              {
+                header: 'Image',
+                cell: (product) => {
+                  const imageUrl = resolveAssetUrl(product.image ?? product.image_url);
+
+                  return imageUrl ? (
+                    <img
+                      src={imageUrl}
+                      alt={product.name}
+                      className="h-12 w-12 rounded-2xl object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-100 text-[11px] font-medium text-surface-500">
+                      N/A
+                    </div>
+                  );
+                }
+              },
               {
                 header: 'Product',
                 cell: (product) => <p className="font-medium text-surface-900">{product.name}</p>

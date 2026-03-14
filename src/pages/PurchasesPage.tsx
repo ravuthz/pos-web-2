@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { DataTable } from '@/components/ui/DataTable';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS, getPaginationMeta } from '@/lib/pagination';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { productService } from '@/services/product';
 import { purchaseService, type PurchaseOrderPayload } from '@/services/purchase';
@@ -45,14 +46,22 @@ const emptyForm: PurchaseFormState = {
 export function PurchasesPage() {
   const queryClient = useQueryClient();
   const selectedBranchId = useBranchStore((state) => state.selectedBranchId);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const [isCreatorOpen, setIsCreatorOpen] = useState(false);
   const [receivingPurchaseId, setReceivingPurchaseId] = useState<number | null>(null);
   const [receiveQuantities, setReceiveQuantities] = useState<Record<number, string>>({});
   const [form, setForm] = useState<PurchaseFormState>(emptyForm);
 
   const purchaseQuery = useQuery({
-    queryKey: ['purchase-orders', selectedBranchId],
-    queryFn: () => purchaseService.getAll({ branch_id: selectedBranchId ?? undefined, per_page: 50 })
+    queryKey: ['purchase-orders', selectedBranchId, page, pageSize],
+    queryFn: () =>
+      purchaseService.getAll({
+        branch_id: selectedBranchId ?? undefined,
+        page,
+        per_page: pageSize
+      }),
+    placeholderData: (previousData) => previousData
   });
 
   const vendorsQuery = useQuery({
@@ -64,6 +73,10 @@ export function PurchasesPage() {
     queryKey: ['purchase-form-products'],
     queryFn: () => productService.getAll({ per_page: 200, is_active: true })
   });
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedBranchId]);
 
   const createMutation = useMutation({
     mutationFn: async (payload: PurchaseFormState) => {
@@ -142,6 +155,7 @@ export function PurchasesPage() {
   });
 
   const purchases = (purchaseQuery.data?.data ?? []) as PurchaseOrder[];
+  const purchasesMeta = getPaginationMeta(purchaseQuery.data?.meta);
   const vendors = vendorsQuery.data?.data ?? [];
   const products = ((productsQuery.data?.data ?? []) as Product[]).sort((a, b) =>
     a.name.localeCompare(b.name)
@@ -459,6 +473,20 @@ export function PurchasesPage() {
           data={purchases}
           keyExtractor={(purchase) => purchase.id}
           emptyMessage="No purchase orders found."
+          isUpdating={purchaseQuery.isFetching}
+          updateLabel="Refreshing purchase orders..."
+          pagination={{
+            page,
+            pageSize,
+            totalItems: purchasesMeta.totalItems,
+            totalPages: purchasesMeta.totalPages,
+            pageSizeOptions: TABLE_PAGE_SIZE_OPTIONS,
+            onPageChange: setPage,
+            onPageSizeChange: (nextPageSize) => {
+              setPageSize(nextPageSize);
+              setPage(1);
+            }
+          }}
           columns={[
             {
               header: 'PO',

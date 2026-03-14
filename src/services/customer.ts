@@ -12,8 +12,10 @@ export const customerService = {
     return response.data.data;
   },
 
-  async search(data: { search: string; branch_id?: number }) {
-    const response = await api.post<{ data: Customer[] }>('/customers/search', data);
+  async search(query: string) {
+    const response = await api.post<{ data: Customer[] }>('/customers/search', {
+      query
+    });
     return response.data.data;
   },
 

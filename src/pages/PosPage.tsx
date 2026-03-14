@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Minus, Plus, ScanLine, Trash2 } from 'lucide-react';
+import { Minus, Plus, ScanLine, Trash2, UserRound, X } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { customerService } from '@/services/customer';
 import { saleService } from '@/services/sale';
 import { shiftService } from '@/services/shift';
 import { useBranchStore } from '@/store/branch';
 import { extractApiError } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
-import type { StoreSalePayload } from '@/types/api';
+import type { Customer, StoreSalePayload } from '@/types/api';
 
 interface PosProduct {
   id: number;
@@ -44,11 +45,14 @@ function makeIdempotencyKey() {
 export function PosPage() {
   const queryClient = useQueryClient();
   const selectedBranchId = useBranchStore((state) => state.selectedBranchId);
+  const [customerSearch, setCustomerSearch] = useState('');
   const [search, setSearch] = useState('');
   const [barcode, setBarcode] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'transfer' | 'khqr'>('cash');
   const [paymentReceived, setPaymentReceived] = useState('0');
   const [notes, setNotes] = useState('');
+  const [customerResults, setCustomerResults] = useState<Customer[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [searchResults, setSearchResults] = useState<PosProduct[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [message, setMessage] = useState<string | null>(null);
@@ -72,6 +76,20 @@ export function PosPage() {
       setMessage(null);
     },
     onError: (error) => {
+      setMessage(extractApiError(error));
+    }
+  });
+
+  const customerSearchMutation = useMutation({
+    mutationFn: async (query: string) => {
+      return customerService.search(query.trim());
+    },
+    onSuccess: (customers: Customer[]) => {
+      setCustomerResults(customers);
+      setMessage(null);
+    },
+    onError: (error) => {
+      setCustomerResults([]);
       setMessage(extractApiError(error));
     }
   });
@@ -134,6 +152,7 @@ export function PosPage() {
 
       const payload: StoreSalePayload = {
         branch_id: selectedBranchId,
+        customer_id: selectedCustomer?.id,
         payment_method: paymentMethod,
         payment_received: received,
         payment_received_usd: paymentMethod === 'cash' ? received : undefined,
@@ -151,6 +170,9 @@ export function PosPage() {
     },
     onSuccess: async (response) => {
       setCart([]);
+      setCustomerResults([]);
+      setSelectedCustomer(null);
+      setCustomerSearch('');
       setSearchResults([]);
       setSearch('');
       setPaymentMethod('cash');
@@ -266,6 +288,110 @@ export function PosPage() {
       ) : (
         <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
           <section className="space-y-4">
+            <div className="card">
+              <div className="card-header">
+                <div>
+                  <h2 className="text-lg font-semibold text-surface-900">Customer</h2>
+                  <p className="text-sm text-surface-500">Search by name or phone and attach the sale.</p>
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                <div>
+                  <label className="label" htmlFor="customer-search">
+                    Search customers
+                  </label>
+                  <input
+                    id="customer-search"
+                    className="input"
+                    placeholder="Search by name or phone"
+                    value={customerSearch}
+                    onChange={(event) => setCustomerSearch(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' && customerSearch.trim()) {
+                        event.preventDefault();
+                        customerSearchMutation.mutate(customerSearch);
+                      }
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-secondary self-end"
+                  onClick={() => customerSearchMutation.mutate(customerSearch)}
+                  disabled={customerSearchMutation.isPending || customerSearch.trim().length === 0}
+                >
+                  {customerSearchMutation.isPending ? 'Searching...' : 'Search'}
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                <div className="rounded-2xl border border-surface-200 bg-surface-50 px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-2xl bg-white p-2 text-primary-700 shadow-sm">
+                        <UserRound className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-surface-900">
+                          {selectedCustomer ? selectedCustomer.name : 'Walk-in customer'}
+                        </p>
+                        <p className="text-sm text-surface-500">
+                          {selectedCustomer
+                            ? selectedCustomer.phone ?? selectedCustomer.email ?? 'No contact info'
+                            : 'No customer selected for this sale.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {selectedCustomer ? (
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-icon"
+                        onClick={() => setSelectedCustomer(null)}
+                        aria-label="Clear selected customer"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+
+                {customerResults.length > 0 ? (
+                  <div className="grid gap-3">
+                    {customerResults.map((customer) => (
+                      <button
+                        key={customer.id}
+                        type="button"
+                        className="rounded-2xl border border-surface-200 p-4 text-left transition hover:border-primary-300 hover:bg-primary-50"
+                        onClick={() => {
+                          setSelectedCustomer(customer);
+                          setCustomerResults([]);
+                          setCustomerSearch(customer.display_name ?? customer.name);
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-medium text-surface-900">{customer.name}</p>
+                            <p className="mt-1 text-sm text-surface-500">
+                              {customer.phone ?? customer.email ?? 'No contact info'}
+                            </p>
+                          </div>
+                          <span className="text-xs font-medium uppercase tracking-wide text-primary-700">
+                            Select
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+
+                {customerSearchMutation.isSuccess && customerSearch.trim() && customerResults.length === 0 ? (
+                  <p className="text-sm text-surface-500">No customers matched that search.</p>
+                ) : null}
+              </div>
+            </div>
+
             <div className="card">
               <div className="grid gap-3 md:grid-cols-[1fr_auto]">
                 <div>

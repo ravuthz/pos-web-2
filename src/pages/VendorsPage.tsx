@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { DataTable } from '@/components/ui/DataTable';
 import { ErrorState, LoadingState } from '@/components/ui/States';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS, getPaginationMeta } from '@/lib/pagination';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { vendorService } from '@/services/vendor';
 import { extractApiError } from '@/lib/api';
@@ -39,14 +40,22 @@ const emptyForm: VendorFormState = {
 export function VendorsPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [form, setForm] = useState<VendorFormState>(emptyForm);
   const deferredSearch = useDeferredValue(search);
 
   const vendorsQuery = useQuery({
-    queryKey: ['vendors', deferredSearch],
-    queryFn: () => vendorService.getAll({ per_page: 50, search: deferredSearch || undefined })
+    queryKey: ['vendors', deferredSearch, page, pageSize],
+    queryFn: () =>
+      vendorService.getAll({
+        page,
+        per_page: pageSize,
+        search: deferredSearch || undefined
+      }),
+    placeholderData: (previousData) => previousData
   });
 
   const saveMutation = useMutation({
@@ -94,6 +103,8 @@ export function VendorsPage() {
   });
 
   const vendors = (vendorsQuery.data?.data ?? []) as Vendor[];
+  const vendorsMeta = getPaginationMeta(vendorsQuery.data?.meta);
+  const isVendorsInitialLoad = vendorsQuery.isLoading && !vendorsQuery.data;
 
   function resetEditor() {
     setIsEditorOpen(false);
@@ -124,11 +135,11 @@ export function VendorsPage() {
     setIsEditorOpen(true);
   }
 
-  if (vendorsQuery.isLoading) {
+  if (isVendorsInitialLoad) {
     return <LoadingState label="Loading vendors..." />;
   }
 
-  if (vendorsQuery.isError) {
+  if (vendorsQuery.isError && !vendorsQuery.data) {
     return <ErrorState message={vendorsQuery.error.message} />;
   }
 
@@ -329,7 +340,10 @@ export function VendorsPage() {
           className="input"
           placeholder="Search vendors"
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setPage(1);
+          }}
         />
 
         <div className="mt-4 overflow-hidden rounded-2xl border border-surface-200">
@@ -337,6 +351,20 @@ export function VendorsPage() {
             data={vendors}
             keyExtractor={(vendor) => vendor.id}
             emptyMessage="No vendors matched the current search."
+            isUpdating={vendorsQuery.isFetching}
+            updateLabel="Refreshing vendors..."
+            pagination={{
+              page,
+              pageSize,
+              totalItems: vendorsMeta.totalItems,
+              totalPages: vendorsMeta.totalPages,
+              pageSizeOptions: TABLE_PAGE_SIZE_OPTIONS,
+              onPageChange: setPage,
+              onPageSizeChange: (nextPageSize) => {
+                setPageSize(nextPageSize);
+                setPage(1);
+              }
+            }}
             columns={[
               {
                 header: 'Vendor',

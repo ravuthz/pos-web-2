@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { DataTable } from '@/components/ui/DataTable';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatCard } from '@/components/ui/StatCard';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
+import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS, getPaginationMeta } from '@/lib/pagination';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { expenseService } from '@/services/expense';
 import { useBranchStore } from '@/store/branch';
@@ -49,19 +50,31 @@ const emptyForm: ExpenseFormState = {
 export function ExpensesPage() {
   const queryClient = useQueryClient();
   const selectedBranchId = useBranchStore((state) => state.selectedBranchId);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [form, setForm] = useState<ExpenseFormState>(emptyForm);
 
   const expensesQuery = useQuery({
-    queryKey: ['expenses', selectedBranchId],
-    queryFn: () => expenseService.getAll({ branch_id: selectedBranchId ?? undefined, per_page: 50 })
+    queryKey: ['expenses', selectedBranchId, page, pageSize],
+    queryFn: () =>
+      expenseService.getAll({
+        branch_id: selectedBranchId ?? undefined,
+        page,
+        per_page: pageSize
+      }),
+    placeholderData: (previousData) => previousData
   });
 
   const summaryQuery = useQuery({
     queryKey: ['expenses-summary', selectedBranchId],
     queryFn: () => expenseService.getSummary({ branch_id: selectedBranchId ?? undefined })
   });
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedBranchId]);
 
   const saveMutation = useMutation({
     mutationFn: async (payload: ExpenseFormState) => {
@@ -150,6 +163,7 @@ export function ExpensesPage() {
   }
 
   const expenses = (expensesQuery.data?.data ?? []) as Expense[];
+  const expensesMeta = getPaginationMeta(expensesQuery.data?.meta);
   const summary = (summaryQuery.data ?? {}) as {
     today?: { total?: number; count?: number };
     this_month?: { total?: number; count?: number };
@@ -404,6 +418,20 @@ export function ExpensesPage() {
           data={expenses}
           keyExtractor={(expense) => expense.id}
           emptyMessage="No expenses found."
+          isUpdating={expensesQuery.isFetching}
+          updateLabel="Refreshing expenses..."
+          pagination={{
+            page,
+            pageSize,
+            totalItems: expensesMeta.totalItems,
+            totalPages: expensesMeta.totalPages,
+            pageSizeOptions: TABLE_PAGE_SIZE_OPTIONS,
+            onPageChange: setPage,
+            onPageSizeChange: (nextPageSize) => {
+              setPageSize(nextPageSize);
+              setPage(1);
+            }
+          }}
           columns={[
             {
               header: 'Expense',

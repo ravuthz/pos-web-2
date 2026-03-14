@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { DataTable } from '@/components/ui/DataTable';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatCard } from '@/components/ui/StatCard';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
+import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS, getPaginationMeta } from '@/lib/pagination';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { shiftService } from '@/services/shift';
 import { useBranchStore } from '@/store/branch';
@@ -40,14 +41,22 @@ const emptyCloseForm: CloseShiftFormState = {
 export function ShiftsPage() {
   const queryClient = useQueryClient();
   const selectedBranchId = useBranchStore((state) => state.selectedBranchId);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const [isOpenEditorVisible, setIsOpenEditorVisible] = useState(false);
   const [isCloseEditorVisible, setIsCloseEditorVisible] = useState(false);
   const [openForm, setOpenForm] = useState<OpenShiftFormState>(emptyOpenForm);
   const [closeForm, setCloseForm] = useState<CloseShiftFormState>(emptyCloseForm);
 
   const shiftsQuery = useQuery({
-    queryKey: ['shifts', selectedBranchId],
-    queryFn: () => shiftService.getAll({ branch_id: selectedBranchId ?? undefined })
+    queryKey: ['shifts', selectedBranchId, page, pageSize],
+    queryFn: () =>
+      shiftService.getAll({
+        branch_id: selectedBranchId ?? undefined,
+        page,
+        per_page: pageSize
+      }),
+    placeholderData: (previousData) => previousData
   });
 
   const currentShiftQuery = useQuery({
@@ -60,6 +69,10 @@ export function ShiftsPage() {
     queryKey: ['shift-summary', selectedBranchId],
     queryFn: () => shiftService.getSummary({ branch_id: selectedBranchId ?? undefined })
   });
+
+  useEffect(() => {
+    setPage(1);
+  }, [selectedBranchId]);
 
   const openShiftMutation = useMutation({
     mutationFn: async (payload: OpenShiftFormState) => {
@@ -129,6 +142,7 @@ export function ShiftsPage() {
   }
 
   const shifts = (shiftsQuery.data?.data ?? []) as Shift[];
+  const shiftsMeta = getPaginationMeta(shiftsQuery.data?.meta);
   const currentShift = currentShiftQuery.data;
   const summary = (summaryQuery.data ?? {}) as {
     total_shifts?: number;
@@ -378,6 +392,20 @@ export function ShiftsPage() {
           data={shifts}
           keyExtractor={(shift) => shift.id}
           emptyMessage="No shifts found."
+          isUpdating={shiftsQuery.isFetching}
+          updateLabel="Refreshing shifts..."
+          pagination={{
+            page,
+            pageSize,
+            totalItems: shiftsMeta.totalItems,
+            totalPages: shiftsMeta.totalPages,
+            pageSizeOptions: TABLE_PAGE_SIZE_OPTIONS,
+            onPageChange: setPage,
+            onPageSizeChange: (nextPageSize) => {
+              setPageSize(nextPageSize);
+              setPage(1);
+            }
+          }}
           columns={[
             {
               header: 'Shift',

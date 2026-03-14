@@ -1,8 +1,8 @@
 import { api } from '@/lib/api';
-import type { Shift } from '@/types/api';
+import type { ListQuery, Shift } from '@/types/api';
 
 export const shiftService = {
-  async getAll(params?: { branch_id?: number; status?: string }) {
+  async getAll(params?: ListQuery & { branch_id?: number; status?: string; cashier_id?: number }) {
     const response = await api.get<{ data: Shift[]; meta?: any }>('/shifts', { params });
     return response.data;
   },

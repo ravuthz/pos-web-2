@@ -22,19 +22,39 @@ import { BranchSelector } from '@/components/layout/BranchSelector';
 import { getInitials } from '@/lib/utils';
 
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/pos', label: 'POS', icon: ScanLine },
-  { to: '/products', label: 'Products', icon: Package },
-  { to: '/sales', label: 'Sales', icon: Receipt },
-  { to: '/categories', label: 'Categories', icon: Boxes },
-  { to: '/customers', label: 'Customers', icon: Users },
-  { to: '/vendors', label: 'Vendors', icon: Truck },
-  { to: '/purchases', label: 'Purchases', icon: ShoppingBag },
-  { to: '/stock-movements', label: 'Stock', icon: Shuffle },
-  { to: '/expenses', label: 'Expenses', icon: Wallet },
-  { to: '/shifts', label: 'Shifts', icon: Store },
-  { to: '/users', label: 'Users', icon: Users },
-  { to: '/reports', label: 'Reports', icon: ChartColumn }
+  {
+    label: 'Overview',
+    items: [
+      { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+      { to: '/reports', label: 'Reports', icon: ChartColumn }
+    ]
+  },
+  {
+    label: 'Operations',
+    items: [
+      { to: '/pos', label: 'POS', icon: ScanLine },
+      { to: '/sales', label: 'Sales', icon: Receipt },
+      { to: '/expenses', label: 'Expenses', icon: Wallet },
+      { to: '/shifts', label: 'Shifts', icon: Store }
+    ]
+  },
+  {
+    label: 'Inventory',
+    items: [
+      { to: '/products', label: 'Products', icon: Package },
+      { to: '/categories', label: 'Categories', icon: Boxes },
+      { to: '/vendors', label: 'Vendors', icon: Truck },
+      { to: '/purchases', label: 'Purchases', icon: ShoppingBag },
+      { to: '/stock-movements', label: 'Stock', icon: Shuffle }
+    ]
+  },
+  {
+    label: 'People',
+    items: [
+      { to: '/customers', label: 'Customers', icon: Users },
+      { to: '/users', label: 'Users', icon: Users }
+    ]
+  }
 ] as const;
 
 export function Layout() {
@@ -53,10 +73,10 @@ export function Layout() {
   });
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.18),_transparent_35%),linear-gradient(180deg,_#f8fafc,_#ecfeff)]">
-      <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col gap-4 px-4 py-4 md:flex-row md:px-6">
-        <aside className="md:w-72 md:shrink-0">
-          <div className="sticky top-4 space-y-4">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.18),_transparent_35%),linear-gradient(180deg,_#f8fafc,_#ecfeff)] md:h-screen md:overflow-hidden">
+      <div className="mx-auto flex min-h-screen max-w-[1600px] flex-col gap-4 px-4 py-4 md:h-full md:min-h-0 md:flex-row md:px-6">
+        <aside className="md:flex md:h-full md:min-h-0 md:w-72 md:shrink-0">
+          <div className="space-y-4 md:flex md:h-full md:min-h-0 md:flex-col md:overflow-y-auto md:pr-1">
             <div className="rounded-3xl bg-surface-900 p-5 text-white shadow-2xl">
               <div className="flex items-center gap-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10 font-semibold">
@@ -73,29 +93,39 @@ export function Layout() {
             </div>
 
             <div className="rounded-3xl border border-surface-200 bg-white/90 p-3 shadow-soft backdrop-blur">
-              <nav className="grid gap-1">
-                {navItems.map((item) => {
-                  const Icon = item.icon;
+              <nav className="space-y-4">
+                {navItems.map((group) => (
+                  <section key={group.label} className="space-y-2">
+                    <p className="px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-surface-400">
+                      {group.label}
+                    </p>
 
-                  return (
-                    <Link
-                      key={item.to}
-                      to={item.to}
-                      activeProps={{ className: 'bg-primary-700 text-white shadow-soft' }}
-                      className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-surface-700 transition hover:bg-surface-100"
-                    >
-                      <Icon className="h-4 w-4" />
-                      <span>{item.label}</span>
-                    </Link>
-                  );
-                })}
+                    <div className="grid gap-1">
+                      {group.items.map((item) => {
+                        const Icon = item.icon;
+
+                        return (
+                          <Link
+                            key={item.to}
+                            to={item.to}
+                            activeProps={{ className: 'bg-primary-700 text-white shadow-soft' }}
+                            className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-surface-700 transition hover:bg-surface-100"
+                          >
+                            <Icon className="h-4 w-4" />
+                            <span>{item.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ))}
               </nav>
             </div>
           </div>
         </aside>
 
-        <div className="min-w-0 flex-1 space-y-4">
-          <header className="rounded-3xl border border-surface-200 bg-white/90 p-4 shadow-soft backdrop-blur">
+        <div className="min-w-0 flex-1 space-y-4 md:flex md:min-h-0 md:flex-col md:overflow-hidden">
+          <header className="rounded-3xl border border-surface-200 bg-white/90 p-4 shadow-soft backdrop-blur md:shrink-0">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-100 text-primary-700">
@@ -123,7 +153,7 @@ export function Layout() {
             </div>
           </header>
 
-          <main className="space-y-6 rounded-[2rem] border border-white/70 bg-white/80 p-4 shadow-soft backdrop-blur md:p-6">
+          <main className="space-y-6 rounded-[2rem] border border-white/70 bg-white/80 p-4 shadow-soft backdrop-blur md:min-h-0 md:flex-1 md:overflow-y-auto md:p-6 md:pr-5">
             <Outlet />
           </main>
         </div>

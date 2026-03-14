@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { DataTable } from '@/components/ui/DataTable';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS, getPaginationMeta } from '@/lib/pagination';
 import { categoryService } from '@/services/category';
 import { useBranchStore } from '@/store/branch';
 import { extractApiError } from '@/lib/api';
@@ -28,14 +29,22 @@ export function CategoriesPage() {
   const queryClient = useQueryClient();
   const selectedBranchId = useBranchStore((state) => state.selectedBranchId);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [form, setForm] = useState<CategoryFormState>(emptyForm);
   const deferredSearch = useDeferredValue(search);
 
   const categoriesQuery = useQuery({
-    queryKey: ['categories', deferredSearch],
-    queryFn: () => categoryService.getAll({ per_page: 100, search: deferredSearch || undefined })
+    queryKey: ['categories', deferredSearch, page, pageSize],
+    queryFn: () =>
+      categoryService.getAll({
+        page,
+        per_page: pageSize,
+        search: deferredSearch || undefined
+      }),
+    placeholderData: (previousData) => previousData
   });
 
   const saveMutation = useMutation({
@@ -82,6 +91,8 @@ export function CategoriesPage() {
   });
 
   const categories = (categoriesQuery.data?.data ?? []) as Category[];
+  const categoriesMeta = getPaginationMeta(categoriesQuery.data?.meta);
+  const isCategoriesInitialLoad = categoriesQuery.isLoading && !categoriesQuery.data;
 
   const parentOptions = useMemo(
     () => categories.filter((category) => category.id !== editingCategory?.id),
@@ -111,11 +122,11 @@ export function CategoriesPage() {
     setIsEditorOpen(true);
   }
 
-  if (categoriesQuery.isLoading) {
+  if (isCategoriesInitialLoad) {
     return <LoadingState label="Loading categories..." />;
   }
 
-  if (categoriesQuery.isError) {
+  if (categoriesQuery.isError && !categoriesQuery.data) {
     return <ErrorState message={categoriesQuery.error.message} />;
   }
 
@@ -245,7 +256,10 @@ export function CategoriesPage() {
           className="input"
           placeholder="Search categories"
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setPage(1);
+          }}
         />
 
         <div className="mt-4 overflow-hidden rounded-2xl border border-surface-200">
@@ -253,6 +267,20 @@ export function CategoriesPage() {
             data={categories}
             keyExtractor={(category) => category.id}
             emptyMessage="No categories matched the current search."
+            isUpdating={categoriesQuery.isFetching}
+            updateLabel="Refreshing categories..."
+            pagination={{
+              page,
+              pageSize,
+              totalItems: categoriesMeta.totalItems,
+              totalPages: categoriesMeta.totalPages,
+              pageSizeOptions: TABLE_PAGE_SIZE_OPTIONS,
+              onPageChange: setPage,
+              onPageSizeChange: (nextPageSize) => {
+                setPageSize(nextPageSize);
+                setPage(1);
+              }
+            }}
             columns={[
               {
                 header: 'Category',

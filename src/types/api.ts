@@ -8,12 +8,16 @@ export interface ApiResponse<T> {
 }
 
 export interface PaginationMeta {
-  current_page: number;
-  from: number;
-  last_page: number;
-  per_page: number;
-  to: number;
-  total: number;
+  page?: number;
+  size?: number;
+  total_pages?: number;
+  total_items?: number;
+  current_page?: number;
+  from?: number;
+  last_page?: number;
+  per_page?: number;
+  to?: number;
+  total?: number;
 }
 
 export interface ApiError {
@@ -513,7 +517,10 @@ export interface ListQuery {
 }
 
 export interface ProductListQuery extends ListQuery {
+  branch_id?: number;
+  vendor_id?: number;
   category_id?: number;
+  status?: string;
   is_active?: boolean;
   low_stock?: boolean;
 }
