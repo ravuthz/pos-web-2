@@ -2,9 +2,11 @@ import { useDeferredValue, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { CrudTabs } from '@/components/ui/CrudTabs';
 import { DataTable } from '@/components/ui/DataTable';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { CRUD_MAIN_TAB_ID, type CrudEditorTab, useCrudTabs } from '@/lib/crudTabs';
 import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS, getPaginationMeta } from '@/lib/pagination';
 import { categoryService } from '@/services/category';
 import { useBranchStore } from '@/store/branch';
@@ -31,10 +33,16 @@ export function CategoriesPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_TABLE_PAGE_SIZE);
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [form, setForm] = useState<CategoryFormState>(emptyForm);
   const deferredSearch = useDeferredValue(search);
+  const crudTabs = useCrudTabs<CategoryFormState, Category>({
+    createEmptyForm: () => ({ ...emptyForm }),
+    getEditForm: (category) => ({
+      name: category.name ?? '',
+      code: category.code ?? '',
+      description: category.description ?? '',
+      parent_id: category.parent_id ? String(category.parent_id) : ''
+    })
+  });
 
   const categoriesQuery = useQuery({
     queryKey: ['categories', deferredSearch, page, pageSize],
@@ -48,15 +56,16 @@ export function CategoriesPage() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: async (payload: CategoryFormState) => {
+    mutationFn: async (tab: CrudEditorTab<CategoryFormState>) => {
+      const payload = tab.form;
       const data = {
         name: payload.name.trim(),
         description: payload.description.trim() || undefined,
         parent_id: payload.parent_id ? Number(payload.parent_id) : undefined
       };
 
-      if (editingCategory) {
-        return categoryService.update(editingCategory.id, data);
+      if (tab.type === 'edit' && tab.entityId) {
+        return categoryService.update(tab.entityId, data);
       }
 
       if (!selectedBranchId) {
@@ -69,9 +78,9 @@ export function CategoriesPage() {
         code: payload.code.trim() || undefined
       });
     },
-    onSuccess: async () => {
-      toast.success(editingCategory ? 'Category updated.' : 'Category created.');
-      resetEditor();
+    onSuccess: async (_data, tab) => {
+      toast.success(tab.type === 'edit' ? 'Category updated.' : 'Category created.');
+      crudTabs.closeTab(tab.id);
       await queryClient.invalidateQueries({ queryKey: ['categories'] });
     },
     onError: (error) => {
@@ -93,34 +102,16 @@ export function CategoriesPage() {
   const categories = (categoriesQuery.data?.data ?? []) as Category[];
   const categoriesMeta = getPaginationMeta(categoriesQuery.data?.meta);
   const isCategoriesInitialLoad = categoriesQuery.isLoading && !categoriesQuery.data;
+  const activeEditorTab = crudTabs.activeEditorTab;
+  const tabItems = [
+    { id: CRUD_MAIN_TAB_ID, type: 'main' as const, title: 'Categories' },
+    ...crudTabs.tabs.map((tab) => ({ id: tab.id, type: tab.type, title: tab.title }))
+  ];
 
   const parentOptions = useMemo(
-    () => categories.filter((category) => category.id !== editingCategory?.id),
-    [categories, editingCategory?.id]
+    () => categories.filter((category) => category.id !== activeEditorTab?.entityId),
+    [categories, activeEditorTab?.entityId]
   );
-
-  function resetEditor() {
-    setIsEditorOpen(false);
-    setEditingCategory(null);
-    setForm(emptyForm);
-  }
-
-  function startCreate() {
-    setEditingCategory(null);
-    setForm(emptyForm);
-    setIsEditorOpen(true);
-  }
-
-  function startEdit(category: Category) {
-    setEditingCategory(category);
-    setForm({
-      name: category.name ?? '',
-      code: category.code ?? '',
-      description: category.description ?? '',
-      parent_id: category.parent_id ? String(category.parent_id) : ''
-    });
-    setIsEditorOpen(true);
-  }
 
   if (isCategoriesInitialLoad) {
     return <LoadingState label="Loading categories..." />;
@@ -136,32 +127,38 @@ export function CategoriesPage() {
         title="Categories"
         subtitle="Organize catalog structure and manage category hierarchy."
         actions={
-          <button type="button" className="btn btn-primary" onClick={startCreate}>
+          <button type="button" className="btn btn-primary" onClick={() => crudTabs.openCreateTab()}>
             <Plus className="h-4 w-4" />
             New category
           </button>
         }
       />
 
-      {isEditorOpen ? (
-        <section className="card space-y-4">
+      <CrudTabs
+        activeTabId={crudTabs.activeTabId}
+        tabs={tabItems}
+        onSelectTab={crudTabs.setActiveTabId}
+        onCloseTab={crudTabs.closeTab}
+      >
+        {activeEditorTab ? (
+          <section className="card space-y-4">
           <div className="card-header mb-0">
             <div>
               <h2 className="text-lg font-semibold text-surface-900">
-                {editingCategory ? 'Edit category' : 'Create category'}
+                {activeEditorTab.type === 'edit' ? 'Edit category' : 'Create category'}
               </h2>
               <p className="text-sm text-surface-500">
-                {editingCategory
+                {activeEditorTab.type === 'edit'
                   ? 'Update category name, parent, and description.'
                   : 'Create a new product category for the selected branch.'}
               </p>
             </div>
-            <button type="button" className="btn btn-ghost btn-icon" onClick={resetEditor}>
+            <button type="button" className="btn btn-ghost btn-icon" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
               <X className="h-4 w-4" />
             </button>
           </div>
 
-          {!editingCategory && !selectedBranchId ? (
+          {activeEditorTab.type === 'create' && !selectedBranchId ? (
             <EmptyState
               title="Branch required"
               message="Pick a branch from the header before creating a category."
@@ -171,7 +168,7 @@ export function CategoriesPage() {
               className="grid gap-4 md:grid-cols-2"
               onSubmit={(event) => {
                 event.preventDefault();
-                saveMutation.mutate(form);
+                saveMutation.mutate(activeEditorTab);
               }}
             >
               <div>
@@ -179,38 +176,44 @@ export function CategoriesPage() {
                   Name
                 </label>
                 <input
-                  id="category-name"
-                  className="input"
-                  value={form.name}
-                  onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                  required
-                />
-              </div>
+                id="category-name"
+                className="input"
+                value={activeEditorTab.form.name}
+                onChange={(event) =>
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, name: event.target.value }))
+                }
+                required
+              />
+            </div>
 
               <div>
                 <label className="label" htmlFor="category-code">
                   Code
                 </label>
                 <input
-                  id="category-code"
-                  className="input"
-                  value={form.code}
-                  onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
-                  disabled={Boolean(editingCategory)}
-                  placeholder={editingCategory ? 'Code is fixed after creation' : 'Optional code'}
-                />
-              </div>
+                id="category-code"
+                className="input"
+                value={activeEditorTab.form.code}
+                onChange={(event) =>
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, code: event.target.value }))
+                }
+                disabled={activeEditorTab.type === 'edit'}
+                placeholder={activeEditorTab.type === 'edit' ? 'Code is fixed after creation' : 'Optional code'}
+              />
+            </div>
 
               <div>
                 <label className="label" htmlFor="category-parent">
                   Parent category
                 </label>
                 <select
-                  id="category-parent"
-                  className="input"
-                  value={form.parent_id}
-                  onChange={(event) => setForm((current) => ({ ...current, parent_id: event.target.value }))}
-                >
+                id="category-parent"
+                className="input"
+                value={activeEditorTab.form.parent_id}
+                onChange={(event) =>
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, parent_id: event.target.value }))
+                }
+              >
                   <option value="">Top level</option>
                   {parentOptions.map((category) => (
                     <option key={category.id} value={category.id}>
@@ -225,33 +228,32 @@ export function CategoriesPage() {
                   Description
                 </label>
                 <textarea
-                  id="category-description"
-                  className="input min-h-28"
-                  value={form.description}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, description: event.target.value }))
-                  }
-                />
-              </div>
+                id="category-description"
+                className="input min-h-28"
+                value={activeEditorTab.form.description}
+                onChange={(event) =>
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, description: event.target.value }))
+                }
+              />
+            </div>
 
               <div className="md:col-span-2 flex flex-wrap gap-3">
-                <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
-                  {saveMutation.isPending
-                    ? 'Saving...'
-                    : editingCategory
+              <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
+                {saveMutation.isPending
+                  ? 'Saving...'
+                  : activeEditorTab.type === 'edit'
                       ? 'Update category'
                       : 'Create category'}
-                </button>
-                <button type="button" className="btn btn-secondary" onClick={resetEditor}>
-                  Cancel
-                </button>
-              </div>
-            </form>
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
+                Cancel
+              </button>
+            </div>
+          </form>
           )}
         </section>
-      ) : null}
-
-      <div className="card">
+        ) : (
+          <div className="card">
         <input
           className="input"
           placeholder="Search categories"
@@ -306,7 +308,7 @@ export function CategoriesPage() {
                 header: 'Actions',
                 cell: (category) => (
                   <div className="flex items-center gap-2">
-                    <button type="button" className="btn btn-secondary btn-icon" onClick={() => startEdit(category)}>
+                    <button type="button" className="btn btn-secondary btn-icon" onClick={() => crudTabs.openEditTab(category)}>
                       <Pencil className="h-4 w-4" />
                     </button>
                     <button
@@ -327,7 +329,9 @@ export function CategoriesPage() {
             ]}
           />
         </div>
-      </div>
+          </div>
+        )}
+      </CrudTabs>
     </div>
   );
 }

@@ -2,9 +2,11 @@ import { useDeferredValue, useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { CrudTabs } from '@/components/ui/CrudTabs';
 import { DataTable } from '@/components/ui/DataTable';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { CRUD_MAIN_TAB_ID, type CrudEditorTab, useCrudTabs } from '@/lib/crudTabs';
 import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS, getPaginationMeta } from '@/lib/pagination';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { categoryService } from '@/services/category';
@@ -52,10 +54,24 @@ export function ProductsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_TABLE_PAGE_SIZE);
   const [lowStockOnly, setLowStockOnly] = useState(false);
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [form, setForm] = useState<ProductFormState>(emptyForm);
   const deferredSearch = useDeferredValue(search);
+  const crudTabs = useCrudTabs<ProductFormState, Product>({
+    createEmptyForm: () => ({ ...emptyForm }),
+    getEditForm: (product) => ({
+      category_id: String(product.category_id ?? ''),
+      vendor_id: product.vendor_id ? String(product.vendor_id) : '',
+      name: product.name ?? '',
+      code: product.code ?? '',
+      barcode: product.barcode ?? '',
+      description: product.description ?? '',
+      cost_price: String(product.cost_price ?? 0),
+      selling_price: String(product.selling_price ?? 0),
+      status: product.status === 'inactive' ? 'inactive' : 'active',
+      track_expiry: Boolean(product.track_expiry),
+      expiry_date: product.expiry_date ?? '',
+      low_stock_alert: String(product.low_stock_alert ?? 0)
+    })
+  });
 
   const productsQuery = useQuery({
     queryKey: ['products', selectedBranchId, deferredSearch, lowStockOnly, page, pageSize],
@@ -81,7 +97,8 @@ export function ProductsPage() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: async (payload: ProductFormState) => {
+    mutationFn: async (tab: CrudEditorTab<ProductFormState>) => {
+      const payload = tab.form;
       const data = {
         branch_id: selectedBranchId ?? undefined,
         category_id: Number(payload.category_id),
@@ -98,8 +115,8 @@ export function ProductsPage() {
         low_stock_alert: Number(payload.low_stock_alert || '0')
       };
 
-      if (editingProduct) {
-        return productService.update(editingProduct.id, data);
+      if (tab.type === 'edit' && tab.entityId) {
+        return productService.update(tab.entityId, data);
       }
 
       if (!selectedBranchId) {
@@ -108,9 +125,9 @@ export function ProductsPage() {
 
       return productService.create(data);
     },
-    onSuccess: async () => {
-      toast.success(editingProduct ? 'Product updated.' : 'Product created.');
-      resetEditor();
+    onSuccess: async (_data, tab) => {
+      toast.success(tab.type === 'edit' ? 'Product updated.' : 'Product created.');
+      crudTabs.closeTab(tab.id);
       await queryClient.invalidateQueries({ queryKey: ['products'] });
     },
     onError: (error) => {
@@ -136,41 +153,15 @@ export function ProductsPage() {
   const isProductsInitialLoad = productsQuery.isLoading && !productsQuery.data;
   const isProductReferencesInitialLoad =
     (categoriesQuery.isLoading && !categoriesQuery.data) || (vendorsQuery.isLoading && !vendorsQuery.data);
+  const activeEditorTab = crudTabs.activeEditorTab;
+  const tabItems = [
+    { id: CRUD_MAIN_TAB_ID, type: 'main' as const, title: 'Products' },
+    ...crudTabs.tabs.map((tab) => ({ id: tab.id, type: tab.type, title: tab.title }))
+  ];
 
   useEffect(() => {
     setPage(1);
   }, [selectedBranchId]);
-
-  function resetEditor() {
-    setIsEditorOpen(false);
-    setEditingProduct(null);
-    setForm(emptyForm);
-  }
-
-  function startCreate() {
-    setEditingProduct(null);
-    setForm(emptyForm);
-    setIsEditorOpen(true);
-  }
-
-  function startEdit(product: Product) {
-    setEditingProduct(product);
-    setForm({
-      category_id: String(product.category_id ?? ''),
-      vendor_id: product.vendor_id ? String(product.vendor_id) : '',
-      name: product.name ?? '',
-      code: product.code ?? '',
-      barcode: product.barcode ?? '',
-      description: product.description ?? '',
-      cost_price: String(product.cost_price ?? 0),
-      selling_price: String(product.selling_price ?? 0),
-      status: product.status === 'inactive' ? 'inactive' : 'active',
-      track_expiry: Boolean(product.track_expiry),
-      expiry_date: product.expiry_date ?? '',
-      low_stock_alert: String(product.low_stock_alert ?? 0)
-    });
-    setIsEditorOpen(true);
-  }
 
   if (isProductsInitialLoad || isProductReferencesInitialLoad) {
     return <LoadingState label="Loading products..." />;
@@ -194,32 +185,38 @@ export function ProductsPage() {
         title="Products"
         subtitle="Catalog, pricing, stock thresholds, and branch-linked product records."
         actions={
-          <button type="button" className="btn btn-primary" onClick={startCreate}>
+          <button type="button" className="btn btn-primary" onClick={() => crudTabs.openCreateTab()}>
             <Plus className="h-4 w-4" />
             New product
           </button>
         }
       />
 
-      {isEditorOpen ? (
-        <section className="card space-y-4">
+      <CrudTabs
+        activeTabId={crudTabs.activeTabId}
+        tabs={tabItems}
+        onSelectTab={crudTabs.setActiveTabId}
+        onCloseTab={crudTabs.closeTab}
+      >
+        {activeEditorTab ? (
+          <section className="card space-y-4">
           <div className="card-header mb-0">
             <div>
               <h2 className="text-lg font-semibold text-surface-900">
-                {editingProduct ? 'Edit product' : 'Create product'}
+                {activeEditorTab.type === 'edit' ? 'Edit product' : 'Create product'}
               </h2>
               <p className="text-sm text-surface-500">
-                {editingProduct
+                {activeEditorTab.type === 'edit'
                   ? 'Update pricing, status, and stock rules.'
                   : 'Create a product for the selected branch inventory.'}
               </p>
             </div>
-            <button type="button" className="btn btn-ghost btn-icon" onClick={resetEditor}>
+            <button type="button" className="btn btn-ghost btn-icon" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
               <X className="h-4 w-4" />
             </button>
           </div>
 
-          {!editingProduct && !selectedBranchId ? (
+          {activeEditorTab.type === 'create' && !selectedBranchId ? (
             <EmptyState
               title="Branch required"
               message="Pick a branch from the header before creating a product."
@@ -229,7 +226,7 @@ export function ProductsPage() {
               className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
               onSubmit={(event) => {
                 event.preventDefault();
-                saveMutation.mutate(form);
+                saveMutation.mutate(activeEditorTab);
               }}
             >
               <div>
@@ -239,8 +236,10 @@ export function ProductsPage() {
                 <select
                   id="product-category"
                   className="input"
-                  value={form.category_id}
-                  onChange={(event) => setForm((current) => ({ ...current, category_id: event.target.value }))}
+                  value={activeEditorTab.form.category_id}
+                  onChange={(event) =>
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, category_id: event.target.value }))
+                  }
                   required
                 >
                   <option value="">Select category</option>
@@ -259,8 +258,10 @@ export function ProductsPage() {
                 <select
                   id="product-vendor"
                   className="input"
-                  value={form.vendor_id}
-                  onChange={(event) => setForm((current) => ({ ...current, vendor_id: event.target.value }))}
+                  value={activeEditorTab.form.vendor_id}
+                  onChange={(event) =>
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, vendor_id: event.target.value }))
+                  }
                 >
                   <option value="">No vendor</option>
                   {vendors.map((vendor) => (
@@ -278,9 +279,9 @@ export function ProductsPage() {
                 <select
                   id="product-status"
                   className="input"
-                  value={form.status}
+                  value={activeEditorTab.form.status}
                   onChange={(event) =>
-                    setForm((current) => ({
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
                       ...current,
                       status: event.target.value as 'active' | 'inactive'
                     }))
@@ -298,8 +299,10 @@ export function ProductsPage() {
                 <input
                   id="product-name"
                   className="input"
-                  value={form.name}
-                  onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                  value={activeEditorTab.form.name}
+                  onChange={(event) =>
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, name: event.target.value }))
+                  }
                   required
                 />
               </div>
@@ -311,8 +314,10 @@ export function ProductsPage() {
                 <input
                   id="product-code"
                   className="input"
-                  value={form.code}
-                  onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
+                  value={activeEditorTab.form.code}
+                  onChange={(event) =>
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, code: event.target.value }))
+                  }
                 />
               </div>
 
@@ -323,8 +328,10 @@ export function ProductsPage() {
                 <input
                   id="product-barcode"
                   className="input"
-                  value={form.barcode}
-                  onChange={(event) => setForm((current) => ({ ...current, barcode: event.target.value }))}
+                  value={activeEditorTab.form.barcode}
+                  onChange={(event) =>
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, barcode: event.target.value }))
+                  }
                 />
               </div>
 
@@ -338,8 +345,10 @@ export function ProductsPage() {
                   min="0"
                   step="0.01"
                   className="input"
-                  value={form.cost_price}
-                  onChange={(event) => setForm((current) => ({ ...current, cost_price: event.target.value }))}
+                  value={activeEditorTab.form.cost_price}
+                  onChange={(event) =>
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, cost_price: event.target.value }))
+                  }
                   required
                 />
               </div>
@@ -354,9 +363,9 @@ export function ProductsPage() {
                   min="0"
                   step="0.01"
                   className="input"
-                  value={form.selling_price}
+                  value={activeEditorTab.form.selling_price}
                   onChange={(event) =>
-                    setForm((current) => ({ ...current, selling_price: event.target.value }))
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, selling_price: event.target.value }))
                   }
                   required
                 />
@@ -371,9 +380,9 @@ export function ProductsPage() {
                   type="number"
                   min="0"
                   className="input"
-                  value={form.low_stock_alert}
+                  value={activeEditorTab.form.low_stock_alert}
                   onChange={(event) =>
-                    setForm((current) => ({ ...current, low_stock_alert: event.target.value }))
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, low_stock_alert: event.target.value }))
                   }
                 />
               </div>
@@ -382,9 +391,9 @@ export function ProductsPage() {
                 <input
                   id="product-expiry-toggle"
                   type="checkbox"
-                  checked={form.track_expiry}
+                  checked={activeEditorTab.form.track_expiry}
                   onChange={(event) =>
-                    setForm((current) => ({
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
                       ...current,
                       track_expiry: event.target.checked,
                       expiry_date: event.target.checked ? current.expiry_date : ''
@@ -404,11 +413,11 @@ export function ProductsPage() {
                   id="product-expiry-date"
                   type="date"
                   className="input"
-                  value={form.expiry_date}
+                  value={activeEditorTab.form.expiry_date}
                   onChange={(event) =>
-                    setForm((current) => ({ ...current, expiry_date: event.target.value }))
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, expiry_date: event.target.value }))
                   }
-                  disabled={!form.track_expiry}
+                  disabled={!activeEditorTab.form.track_expiry}
                 />
               </div>
 
@@ -419,31 +428,30 @@ export function ProductsPage() {
                 <textarea
                   id="product-description"
                   className="input min-h-28"
-                  value={form.description}
+                  value={activeEditorTab.form.description}
                   onChange={(event) =>
-                    setForm((current) => ({ ...current, description: event.target.value }))
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, description: event.target.value }))
                   }
                 />
               </div>
 
               <div className="md:col-span-2 xl:col-span-3 flex flex-wrap gap-3">
-                <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
-                  {saveMutation.isPending
-                    ? 'Saving...'
-                    : editingProduct
+              <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
+                {saveMutation.isPending
+                  ? 'Saving...'
+                  : activeEditorTab.type === 'edit'
                       ? 'Update product'
                       : 'Create product'}
-                </button>
-                <button type="button" className="btn btn-secondary" onClick={resetEditor}>
-                  Cancel
-                </button>
-              </div>
-            </form>
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
+                Cancel
+              </button>
+            </div>
+          </form>
           )}
         </section>
-      ) : null}
-
-      <div className="card">
+        ) : (
+          <div className="card">
         <div className="grid gap-3 md:grid-cols-[1fr_auto]">
           <input
             className="input"
@@ -544,7 +552,7 @@ export function ProductsPage() {
                 header: 'Actions',
                 cell: (product) => (
                   <div className="flex items-center gap-2">
-                    <button type="button" className="btn btn-secondary btn-icon" onClick={() => startEdit(product)}>
+                    <button type="button" className="btn btn-secondary btn-icon" onClick={() => crudTabs.openEditTab(product)}>
                       <Pencil className="h-4 w-4" />
                     </button>
                     <button
@@ -565,7 +573,9 @@ export function ProductsPage() {
             ]}
           />
         </div>
-      </div>
+          </div>
+        )}
+      </CrudTabs>
     </div>
   );
 }

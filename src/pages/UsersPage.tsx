@@ -2,9 +2,11 @@ import { useDeferredValue, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { CrudTabs } from '@/components/ui/CrudTabs';
 import { DataTable } from '@/components/ui/DataTable';
 import { ErrorState, LoadingState } from '@/components/ui/States';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { CRUD_MAIN_TAB_ID, type CrudEditorTab, useCrudTabs } from '@/lib/crudTabs';
 import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS, getPaginationMeta } from '@/lib/pagination';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { branchService } from '@/services/branch';
@@ -46,10 +48,23 @@ export function UsersPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_TABLE_PAGE_SIZE);
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [form, setForm] = useState<UserFormState>(emptyForm);
   const deferredSearch = useDeferredValue(search);
+  const crudTabs = useCrudTabs<UserFormState, User>({
+    createEmptyForm: () => ({ ...emptyForm, branch_ids: [] }),
+    getEditForm: (user) => ({
+      name: user.name ?? '',
+      username: user.username ?? '',
+      email: user.email ?? '',
+      password: '',
+      password_confirmation: '',
+      role_id: String(user.role?.id ?? user.role_id ?? ''),
+      branch_id: String(user.primary_branch?.id ?? user.branch_id ?? ''),
+      phone: user.phone ?? '',
+      address: user.address ?? '',
+      status: user.status === 'inactive' ? 'inactive' : 'active',
+      branch_ids: (user.branches ?? []).map((branch) => branch.id)
+    })
+  });
 
   const usersQuery = useQuery({
     queryKey: ['users', deferredSearch, page, pageSize],
@@ -73,7 +88,8 @@ export function UsersPage() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: async (payload: UserFormState) => {
+    mutationFn: async (tab: CrudEditorTab<UserFormState>) => {
+      const payload = tab.form;
       const data: UserPayload = {
         name: payload.name.trim(),
         username: payload.username.trim(),
@@ -91,8 +107,8 @@ export function UsersPage() {
         data.password_confirmation = payload.password_confirmation;
       }
 
-      if (editingUser) {
-        return userService.update(editingUser.id, data);
+      if (tab.type === 'edit' && tab.entityId) {
+        return userService.update(tab.entityId, data);
       }
 
       if (!data.password) {
@@ -101,9 +117,9 @@ export function UsersPage() {
 
       return userService.create(data as UserPayload & { password: string });
     },
-    onSuccess: async () => {
-      toast.success(editingUser ? 'User updated.' : 'User created.');
-      resetEditor();
+    onSuccess: async (_data, tab) => {
+      toast.success(tab.type === 'edit' ? 'User updated.' : 'User created.');
+      crudTabs.closeTab(tab.id);
       await queryClient.invalidateQueries({ queryKey: ['users'] });
     },
     onError: (error) => {
@@ -129,39 +145,18 @@ export function UsersPage() {
   const isUsersInitialLoad = usersQuery.isLoading && !usersQuery.data;
   const isUserReferencesInitialLoad =
     (rolesQuery.isLoading && !rolesQuery.data) || (branchesQuery.isLoading && !branchesQuery.data);
-
-  function resetEditor() {
-    setIsEditorOpen(false);
-    setEditingUser(null);
-    setForm(emptyForm);
-  }
-
-  function startCreate() {
-    setEditingUser(null);
-    setForm(emptyForm);
-    setIsEditorOpen(true);
-  }
-
-  function startEdit(user: User) {
-    setEditingUser(user);
-    setForm({
-      name: user.name ?? '',
-      username: user.username ?? '',
-      email: user.email ?? '',
-      password: '',
-      password_confirmation: '',
-      role_id: String(user.role?.id ?? user.role_id ?? ''),
-      branch_id: String(user.primary_branch?.id ?? user.branch_id ?? ''),
-      phone: user.phone ?? '',
-      address: user.address ?? '',
-      status: user.status === 'inactive' ? 'inactive' : 'active',
-      branch_ids: (user.branches ?? []).map((branch) => branch.id)
-    });
-    setIsEditorOpen(true);
-  }
+  const activeEditorTab = crudTabs.activeEditorTab;
+  const tabItems = [
+    { id: CRUD_MAIN_TAB_ID, type: 'main' as const, title: 'Users' },
+    ...crudTabs.tabs.map((tab) => ({ id: tab.id, type: tab.type, title: tab.title }))
+  ];
 
   function toggleBranch(branchId: number) {
-    setForm((current) => {
+    if (!activeEditorTab) {
+      return;
+    }
+
+    crudTabs.updateTabForm(activeEditorTab.id, (current) => {
       const nextBranchIds = current.branch_ids.includes(branchId)
         ? current.branch_ids.filter((id) => id !== branchId)
         : [...current.branch_ids, branchId];
@@ -199,38 +194,44 @@ export function UsersPage() {
         title="Users"
         subtitle="Manage staff accounts, roles, and branch access."
         actions={
-          <button type="button" className="btn btn-primary" onClick={startCreate}>
+          <button type="button" className="btn btn-primary" onClick={() => crudTabs.openCreateTab()}>
             <Plus className="h-4 w-4" />
             New user
           </button>
         }
       />
 
-      {isEditorOpen ? (
-        <section className="card space-y-4">
+      <CrudTabs
+        activeTabId={crudTabs.activeTabId}
+        tabs={tabItems}
+        onSelectTab={crudTabs.setActiveTabId}
+        onCloseTab={crudTabs.closeTab}
+      >
+        {activeEditorTab ? (
+          <section className="card space-y-4">
           <div className="card-header mb-0">
             <div>
               <h2 className="text-lg font-semibold text-surface-900">
-                {editingUser ? 'Edit user' : 'Create user'}
+                {activeEditorTab.type === 'edit' ? 'Edit user' : 'Create user'}
               </h2>
               <p className="text-sm text-surface-500">
-                {editingUser
+                {activeEditorTab.type === 'edit'
                   ? 'Update user role, branch access, and profile details.'
                   : 'Create a new team member account.'}
               </p>
             </div>
-            <button type="button" className="btn btn-ghost btn-icon" onClick={resetEditor}>
+            <button type="button" className="btn btn-ghost btn-icon" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
               <X className="h-4 w-4" />
             </button>
           </div>
 
-          <form
-            className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
-            onSubmit={(event) => {
-              event.preventDefault();
-              saveMutation.mutate(form);
-            }}
-          >
+            <form
+              className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                saveMutation.mutate(activeEditorTab);
+              }}
+            >
             <div>
               <label className="label" htmlFor="user-name">
                 Name
@@ -238,8 +239,10 @@ export function UsersPage() {
               <input
                 id="user-name"
                 className="input"
-                value={form.name}
-                onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                value={activeEditorTab.form.name}
+                onChange={(event) =>
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, name: event.target.value }))
+                }
                 required
               />
             </div>
@@ -251,9 +254,9 @@ export function UsersPage() {
               <input
                 id="user-username"
                 className="input"
-                value={form.username}
+                value={activeEditorTab.form.username}
                 onChange={(event) =>
-                  setForm((current) => ({ ...current, username: event.target.value }))
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, username: event.target.value }))
                 }
                 required
               />
@@ -267,8 +270,10 @@ export function UsersPage() {
                 id="user-email"
                 type="email"
                 className="input"
-                value={form.email}
-                onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                value={activeEditorTab.form.email}
+                onChange={(event) =>
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, email: event.target.value }))
+                }
                 required
               />
             </div>
@@ -280,8 +285,10 @@ export function UsersPage() {
               <select
                 id="user-role"
                 className="input"
-                value={form.role_id}
-                onChange={(event) => setForm((current) => ({ ...current, role_id: event.target.value }))}
+                value={activeEditorTab.form.role_id}
+                onChange={(event) =>
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, role_id: event.target.value }))
+                }
                 required
               >
                 <option value="">Select role</option>
@@ -300,9 +307,9 @@ export function UsersPage() {
               <select
                 id="user-status"
                 className="input"
-                value={form.status}
+                value={activeEditorTab.form.status}
                 onChange={(event) =>
-                  setForm((current) => ({
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
                     ...current,
                     status: event.target.value as 'active' | 'inactive'
                   }))
@@ -320,12 +327,14 @@ export function UsersPage() {
               <select
                 id="user-primary-branch"
                 className="input"
-                value={form.branch_id}
-                onChange={(event) => setForm((current) => ({ ...current, branch_id: event.target.value }))}
+                value={activeEditorTab.form.branch_id}
+                onChange={(event) =>
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, branch_id: event.target.value }))
+                }
               >
                 <option value="">No primary branch</option>
                 {branches
-                  .filter((branch) => form.branch_ids.includes(branch.id))
+                  .filter((branch) => activeEditorTab.form.branch_ids.includes(branch.id))
                   .map((branch) => (
                     <option key={branch.id} value={branch.id}>
                       {branch.name}
@@ -341,8 +350,10 @@ export function UsersPage() {
               <input
                 id="user-phone"
                 className="input"
-                value={form.phone}
-                onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                value={activeEditorTab.form.phone}
+                onChange={(event) =>
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, phone: event.target.value }))
+                }
               />
             </div>
 
@@ -353,8 +364,10 @@ export function UsersPage() {
               <textarea
                 id="user-address"
                 className="input min-h-24"
-                value={form.address}
-                onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))}
+                value={activeEditorTab.form.address}
+                onChange={(event) =>
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, address: event.target.value }))
+                }
               />
             </div>
 
@@ -366,10 +379,12 @@ export function UsersPage() {
                 id="user-password"
                 type="password"
                 className="input"
-                value={form.password}
-                onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
-                placeholder={editingUser ? 'Leave blank to keep current password' : ''}
-                required={!editingUser}
+                value={activeEditorTab.form.password}
+                onChange={(event) =>
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, password: event.target.value }))
+                }
+                placeholder={activeEditorTab.type === 'edit' ? 'Leave blank to keep current password' : ''}
+                required={activeEditorTab.type === 'create'}
               />
             </div>
 
@@ -381,14 +396,14 @@ export function UsersPage() {
                 id="user-password-confirmation"
                 type="password"
                 className="input"
-                value={form.password_confirmation}
+                value={activeEditorTab.form.password_confirmation}
                 onChange={(event) =>
-                  setForm((current) => ({
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
                     ...current,
                     password_confirmation: event.target.value
                   }))
                 }
-                required={!editingUser || Boolean(form.password)}
+                required={activeEditorTab.type === 'create' || Boolean(activeEditorTab.form.password)}
               />
             </div>
 
@@ -402,7 +417,7 @@ export function UsersPage() {
                   >
                     <input
                       type="checkbox"
-                      checked={form.branch_ids.includes(branch.id)}
+                      checked={activeEditorTab.form.branch_ids.includes(branch.id)}
                       onChange={() => toggleBranch(branch.id)}
                     />
                     <span>{branch.name}</span>
@@ -413,17 +428,20 @@ export function UsersPage() {
 
             <div className="md:col-span-2 xl:col-span-3 flex flex-wrap gap-3">
               <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
-                {saveMutation.isPending ? 'Saving...' : editingUser ? 'Update user' : 'Create user'}
+                {saveMutation.isPending
+                  ? 'Saving...'
+                  : activeEditorTab.type === 'edit'
+                    ? 'Update user'
+                    : 'Create user'}
               </button>
-              <button type="button" className="btn btn-secondary" onClick={resetEditor}>
+              <button type="button" className="btn btn-secondary" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
                 Cancel
               </button>
             </div>
           </form>
         </section>
-      ) : null}
-
-      <div className="card">
+        ) : (
+          <div className="card">
         <input
           className="input"
           placeholder="Search users by name, username, or email"
@@ -486,7 +504,7 @@ export function UsersPage() {
                 header: 'Actions',
                 cell: (user) => (
                   <div className="flex items-center gap-2">
-                    <button type="button" className="btn btn-secondary btn-icon" onClick={() => startEdit(user)}>
+                    <button type="button" className="btn btn-secondary btn-icon" onClick={() => crudTabs.openEditTab(user)}>
                       <Pencil className="h-4 w-4" />
                     </button>
                     <button
@@ -507,7 +525,9 @@ export function UsersPage() {
             ]}
           />
         </div>
-      </div>
+          </div>
+        )}
+      </CrudTabs>
     </div>
   );
 }

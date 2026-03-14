@@ -2,10 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { CrudTabs } from '@/components/ui/CrudTabs';
 import { DataTable } from '@/components/ui/DataTable';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatCard } from '@/components/ui/StatCard';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
+import { CRUD_MAIN_TAB_ID, type CrudEditorTab, useCrudTabs } from '@/lib/crudTabs';
 import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS, getPaginationMeta } from '@/lib/pagination';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { expenseService } from '@/services/expense';
@@ -52,9 +54,22 @@ export function ExpensesPage() {
   const selectedBranchId = useBranchStore((state) => state.selectedBranchId);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_TABLE_PAGE_SIZE);
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-  const [form, setForm] = useState<ExpenseFormState>(emptyForm);
+  const crudTabs = useCrudTabs<ExpenseFormState, Expense>({
+    createEmptyForm: () => ({
+      ...emptyForm,
+      expense_number: `EXP-${Date.now()}`
+    }),
+    getEditForm: (expense) => ({
+      category: expense.category as ExpenseFormState['category'],
+      amount: String(expense.amount ?? 0),
+      expense_number: expense.expense_number ?? '',
+      receipt_number: expense.receipt_number ?? '',
+      expense_date: expense.expense_date ?? new Date().toISOString().slice(0, 10),
+      payment_method: expense.payment_method ?? 'cash',
+      description: expense.description ?? '',
+      notes: expense.notes ?? ''
+    })
+  });
 
   const expensesQuery = useQuery({
     queryKey: ['expenses', selectedBranchId, page, pageSize],
@@ -77,7 +92,8 @@ export function ExpensesPage() {
   }, [selectedBranchId]);
 
   const saveMutation = useMutation({
-    mutationFn: async (payload: ExpenseFormState) => {
+    mutationFn: async (tab: CrudEditorTab<ExpenseFormState>) => {
+      const payload = tab.form;
       if (!selectedBranchId) {
         throw new Error('Select a branch before creating an expense.');
       }
@@ -94,15 +110,15 @@ export function ExpensesPage() {
         notes: payload.notes.trim() || undefined
       };
 
-      if (editingExpense) {
-        return expenseService.update(editingExpense.id, data);
+      if (tab.type === 'edit' && tab.entityId) {
+        return expenseService.update(tab.entityId, data);
       }
 
       return expenseService.create(data);
     },
-    onSuccess: async () => {
-      toast.success(editingExpense ? 'Expense updated.' : 'Expense created.');
-      resetEditor();
+    onSuccess: async (_data, tab) => {
+      toast.success(tab.type === 'edit' ? 'Expense updated.' : 'Expense created.');
+      crudTabs.closeTab(tab.id);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['expenses'] }),
         queryClient.invalidateQueries({ queryKey: ['expenses-summary'] }),
@@ -164,41 +180,16 @@ export function ExpensesPage() {
 
   const expenses = (expensesQuery.data?.data ?? []) as Expense[];
   const expensesMeta = getPaginationMeta(expensesQuery.data?.meta);
+  const activeEditorTab = crudTabs.activeEditorTab;
+  const tabItems = [
+    { id: CRUD_MAIN_TAB_ID, type: 'main' as const, title: 'Expenses' },
+    ...crudTabs.tabs.map((tab) => ({ id: tab.id, type: tab.type, title: tab.title }))
+  ];
   const summary = (summaryQuery.data ?? {}) as {
     today?: { total?: number; count?: number };
     this_month?: { total?: number; count?: number };
     pending?: { total?: number; count?: number };
   };
-
-  function resetEditor() {
-    setIsEditorOpen(false);
-    setEditingExpense(null);
-    setForm(emptyForm);
-  }
-
-  function startCreate() {
-    setEditingExpense(null);
-    setForm({
-      ...emptyForm,
-      expense_number: `EXP-${Date.now()}`
-    });
-    setIsEditorOpen(true);
-  }
-
-  function startEdit(expense: Expense) {
-    setEditingExpense(expense);
-    setForm({
-      category: expense.category as ExpenseFormState['category'],
-      amount: String(expense.amount ?? 0),
-      expense_number: expense.expense_number ?? '',
-      receipt_number: expense.receipt_number ?? '',
-      expense_date: expense.expense_date ?? new Date().toISOString().slice(0, 10),
-      payment_method: expense.payment_method ?? 'cash',
-      description: expense.description ?? '',
-      notes: expense.notes ?? ''
-    });
-    setIsEditorOpen(true);
-  }
 
   return (
     <div className="space-y-6">
@@ -206,27 +197,33 @@ export function ExpensesPage() {
         title="Expenses"
         subtitle="Create, review, approve, and settle branch expenses."
         actions={
-          <button type="button" className="btn btn-primary" onClick={startCreate}>
+          <button type="button" className="btn btn-primary" onClick={() => crudTabs.openCreateTab()}>
             <Plus className="h-4 w-4" />
             New expense
           </button>
         }
       />
 
-      {isEditorOpen ? (
-        <section className="card space-y-4">
+      <CrudTabs
+        activeTabId={crudTabs.activeTabId}
+        tabs={tabItems}
+        onSelectTab={crudTabs.setActiveTabId}
+        onCloseTab={crudTabs.closeTab}
+      >
+        {activeEditorTab ? (
+          <section className="card space-y-4">
           <div className="card-header mb-0">
             <div>
               <h2 className="text-lg font-semibold text-surface-900">
-                {editingExpense ? 'Edit expense' : 'Create expense'}
+                {activeEditorTab.type === 'edit' ? 'Edit expense' : 'Create expense'}
               </h2>
               <p className="text-sm text-surface-500">
-                {editingExpense
+                {activeEditorTab.type === 'edit'
                   ? 'Only pending expenses can be updated.'
                   : 'Create a new expense for the selected branch.'}
               </p>
             </div>
-            <button type="button" className="btn btn-ghost btn-icon" onClick={resetEditor}>
+            <button type="button" className="btn btn-ghost btn-icon" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -241,7 +238,7 @@ export function ExpensesPage() {
               className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
               onSubmit={(event) => {
                 event.preventDefault();
-                saveMutation.mutate(form);
+                saveMutation.mutate(activeEditorTab);
               }}
             >
               <div>
@@ -251,9 +248,9 @@ export function ExpensesPage() {
                 <input
                   id="expense-number"
                   className="input"
-                  value={form.expense_number}
+                  value={activeEditorTab.form.expense_number}
                   onChange={(event) =>
-                    setForm((current) => ({ ...current, expense_number: event.target.value }))
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, expense_number: event.target.value }))
                   }
                   required
                 />
@@ -266,9 +263,9 @@ export function ExpensesPage() {
                 <select
                   id="expense-category"
                   className="input"
-                  value={form.category}
+                  value={activeEditorTab.form.category}
                   onChange={(event) =>
-                    setForm((current) => ({
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
                       ...current,
                       category: event.target.value as ExpenseFormState['category']
                     }))
@@ -292,8 +289,10 @@ export function ExpensesPage() {
                   min="0"
                   step="0.01"
                   className="input"
-                  value={form.amount}
-                  onChange={(event) => setForm((current) => ({ ...current, amount: event.target.value }))}
+                  value={activeEditorTab.form.amount}
+                  onChange={(event) =>
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, amount: event.target.value }))
+                  }
                   required
                 />
               </div>
@@ -306,9 +305,9 @@ export function ExpensesPage() {
                   id="expense-date"
                   type="date"
                   className="input"
-                  value={form.expense_date}
+                  value={activeEditorTab.form.expense_date}
                   onChange={(event) =>
-                    setForm((current) => ({ ...current, expense_date: event.target.value }))
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, expense_date: event.target.value }))
                   }
                   required
                 />
@@ -321,9 +320,9 @@ export function ExpensesPage() {
                 <select
                   id="expense-payment-method"
                   className="input"
-                  value={form.payment_method}
+                  value={activeEditorTab.form.payment_method}
                   onChange={(event) =>
-                    setForm((current) => ({
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
                       ...current,
                       payment_method: event.target.value as ExpenseFormState['payment_method']
                     }))
@@ -343,9 +342,9 @@ export function ExpensesPage() {
                 <input
                   id="expense-receipt"
                   className="input"
-                  value={form.receipt_number}
+                  value={activeEditorTab.form.receipt_number}
                   onChange={(event) =>
-                    setForm((current) => ({ ...current, receipt_number: event.target.value }))
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, receipt_number: event.target.value }))
                   }
                 />
               </div>
@@ -357,9 +356,9 @@ export function ExpensesPage() {
                 <textarea
                   id="expense-description"
                   className="input min-h-24"
-                  value={form.description}
+                  value={activeEditorTab.form.description}
                   onChange={(event) =>
-                    setForm((current) => ({ ...current, description: event.target.value }))
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, description: event.target.value }))
                   }
                 />
               </div>
@@ -371,8 +370,10 @@ export function ExpensesPage() {
                 <textarea
                   id="expense-notes"
                   className="input min-h-28"
-                  value={form.notes}
-                  onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
+                  value={activeEditorTab.form.notes}
+                  onChange={(event) =>
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, notes: event.target.value }))
+                  }
                 />
               </div>
 
@@ -380,19 +381,19 @@ export function ExpensesPage() {
                 <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
                   {saveMutation.isPending
                     ? 'Saving...'
-                    : editingExpense
+                    : activeEditorTab.type === 'edit'
                       ? 'Update expense'
                       : 'Create expense'}
                 </button>
-                <button type="button" className="btn btn-secondary" onClick={resetEditor}>
+                <button type="button" className="btn btn-secondary" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
                   Cancel
                 </button>
               </div>
             </form>
           )}
         </section>
-      ) : null}
-
+        ) : (
+          <>
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard
           label="Today Paid"
@@ -460,10 +461,10 @@ export function ExpensesPage() {
             },
             {
               header: 'Actions',
-              cell: (expense) => (
-                <div className="flex flex-wrap items-center gap-2">
+                cell: (expense) => (
+                  <div className="flex flex-wrap items-center gap-2">
                   {expense.is_editable ? (
-                    <button type="button" className="btn btn-secondary btn-icon" onClick={() => startEdit(expense)}>
+                    <button type="button" className="btn btn-secondary btn-icon" onClick={() => crudTabs.openEditTab(expense)}>
                       <Pencil className="h-4 w-4" />
                     </button>
                   ) : null}
@@ -505,8 +506,11 @@ export function ExpensesPage() {
               )
             }
           ]}
-        />
-      </div>
+          />
+        </div>
+          </>
+        )}
+      </CrudTabs>
     </div>
   );
 }

@@ -2,9 +2,11 @@ import { useDeferredValue, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { CrudTabs } from '@/components/ui/CrudTabs';
 import { DataTable } from '@/components/ui/DataTable';
 import { ErrorState, LoadingState } from '@/components/ui/States';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { CRUD_MAIN_TAB_ID, type CrudEditorTab, useCrudTabs } from '@/lib/crudTabs';
 import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS, getPaginationMeta } from '@/lib/pagination';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { vendorService } from '@/services/vendor';
@@ -42,10 +44,22 @@ export function VendorsPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_TABLE_PAGE_SIZE);
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
-  const [form, setForm] = useState<VendorFormState>(emptyForm);
   const deferredSearch = useDeferredValue(search);
+  const crudTabs = useCrudTabs<VendorFormState, Vendor>({
+    createEmptyForm: () => ({ ...emptyForm }),
+    getEditForm: (vendor) => ({
+      code: vendor.code ?? '',
+      name: vendor.name ?? '',
+      contact_person: vendor.contact_person ?? '',
+      email: vendor.email ?? '',
+      phone: vendor.phone ?? '',
+      address: vendor.address ?? '',
+      payment_terms: vendor.payment_terms ?? '',
+      credit_days: vendor.credit_days ? String(vendor.credit_days) : '',
+      notes: vendor.notes ?? '',
+      status: vendor.status === 'inactive' ? 'inactive' : 'active'
+    })
+  });
 
   const vendorsQuery = useQuery({
     queryKey: ['vendors', deferredSearch, page, pageSize],
@@ -59,7 +73,8 @@ export function VendorsPage() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: async (payload: VendorFormState) => {
+    mutationFn: async (tab: CrudEditorTab<VendorFormState>) => {
+      const payload = tab.form;
       const data = {
         name: payload.name.trim(),
         contact_person: payload.contact_person.trim() || undefined,
@@ -72,8 +87,8 @@ export function VendorsPage() {
         status: payload.status
       };
 
-      if (editingVendor) {
-        return vendorService.update(editingVendor.id, data);
+      if (tab.type === 'edit' && tab.entityId) {
+        return vendorService.update(tab.entityId, data);
       }
 
       return vendorService.create({
@@ -81,9 +96,9 @@ export function VendorsPage() {
         code: payload.code.trim()
       });
     },
-    onSuccess: async () => {
-      toast.success(editingVendor ? 'Vendor updated.' : 'Vendor created.');
-      resetEditor();
+    onSuccess: async (_data, tab) => {
+      toast.success(tab.type === 'edit' ? 'Vendor updated.' : 'Vendor created.');
+      crudTabs.closeTab(tab.id);
       await queryClient.invalidateQueries({ queryKey: ['vendors'] });
     },
     onError: (error) => {
@@ -105,35 +120,11 @@ export function VendorsPage() {
   const vendors = (vendorsQuery.data?.data ?? []) as Vendor[];
   const vendorsMeta = getPaginationMeta(vendorsQuery.data?.meta);
   const isVendorsInitialLoad = vendorsQuery.isLoading && !vendorsQuery.data;
-
-  function resetEditor() {
-    setIsEditorOpen(false);
-    setEditingVendor(null);
-    setForm(emptyForm);
-  }
-
-  function startCreate() {
-    setEditingVendor(null);
-    setForm(emptyForm);
-    setIsEditorOpen(true);
-  }
-
-  function startEdit(vendor: Vendor) {
-    setEditingVendor(vendor);
-    setForm({
-      code: vendor.code ?? '',
-      name: vendor.name ?? '',
-      contact_person: vendor.contact_person ?? '',
-      email: vendor.email ?? '',
-      phone: vendor.phone ?? '',
-      address: vendor.address ?? '',
-      payment_terms: vendor.payment_terms ?? '',
-      credit_days: vendor.credit_days ? String(vendor.credit_days) : '',
-      notes: vendor.notes ?? '',
-      status: vendor.status === 'inactive' ? 'inactive' : 'active'
-    });
-    setIsEditorOpen(true);
-  }
+  const activeEditorTab = crudTabs.activeEditorTab;
+  const tabItems = [
+    { id: CRUD_MAIN_TAB_ID, type: 'main' as const, title: 'Vendors' },
+    ...crudTabs.tabs.map((tab) => ({ id: tab.id, type: tab.type, title: tab.title }))
+  ];
 
   if (isVendorsInitialLoad) {
     return <LoadingState label="Loading vendors..." />;
@@ -149,27 +140,33 @@ export function VendorsPage() {
         title="Vendors"
         subtitle="Manage suppliers used for purchases and expense association."
         actions={
-          <button type="button" className="btn btn-primary" onClick={startCreate}>
+          <button type="button" className="btn btn-primary" onClick={() => crudTabs.openCreateTab()}>
             <Plus className="h-4 w-4" />
             New vendor
           </button>
         }
       />
 
-      {isEditorOpen ? (
-        <section className="card space-y-4">
+      <CrudTabs
+        activeTabId={crudTabs.activeTabId}
+        tabs={tabItems}
+        onSelectTab={crudTabs.setActiveTabId}
+        onCloseTab={crudTabs.closeTab}
+      >
+        {activeEditorTab ? (
+          <section className="card space-y-4">
           <div className="card-header mb-0">
             <div>
               <h2 className="text-lg font-semibold text-surface-900">
-                {editingVendor ? 'Edit vendor' : 'Create vendor'}
+                {activeEditorTab.type === 'edit' ? 'Edit vendor' : 'Create vendor'}
               </h2>
               <p className="text-sm text-surface-500">
-                {editingVendor
+                {activeEditorTab.type === 'edit'
                   ? 'Update supplier contact and payment details.'
                   : 'Add a supplier for purchase orders and cost tracking.'}
               </p>
             </div>
-            <button type="button" className="btn btn-ghost btn-icon" onClick={resetEditor}>
+            <button type="button" className="btn btn-ghost btn-icon" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -178,7 +175,7 @@ export function VendorsPage() {
             className="grid gap-4 md:grid-cols-2"
             onSubmit={(event) => {
               event.preventDefault();
-              saveMutation.mutate(form);
+              saveMutation.mutate(activeEditorTab);
             }}
           >
             <div>
@@ -188,10 +185,12 @@ export function VendorsPage() {
               <input
                 id="vendor-code"
                 className="input"
-                value={form.code}
-                onChange={(event) => setForm((current) => ({ ...current, code: event.target.value }))}
-                disabled={Boolean(editingVendor)}
-                required={!editingVendor}
+                value={activeEditorTab.form.code}
+                onChange={(event) =>
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, code: event.target.value }))
+                }
+                disabled={activeEditorTab.type === 'edit'}
+                required={activeEditorTab.type === 'create'}
               />
             </div>
 
@@ -202,8 +201,10 @@ export function VendorsPage() {
               <input
                 id="vendor-name"
                 className="input"
-                value={form.name}
-                onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                value={activeEditorTab.form.name}
+                onChange={(event) =>
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, name: event.target.value }))
+                }
                 required
               />
             </div>
@@ -215,9 +216,9 @@ export function VendorsPage() {
               <input
                 id="vendor-contact"
                 className="input"
-                value={form.contact_person}
+                value={activeEditorTab.form.contact_person}
                 onChange={(event) =>
-                  setForm((current) => ({ ...current, contact_person: event.target.value }))
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, contact_person: event.target.value }))
                 }
               />
             </div>
@@ -230,8 +231,10 @@ export function VendorsPage() {
                 id="vendor-email"
                 type="email"
                 className="input"
-                value={form.email}
-                onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                value={activeEditorTab.form.email}
+                onChange={(event) =>
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, email: event.target.value }))
+                }
               />
             </div>
 
@@ -242,8 +245,10 @@ export function VendorsPage() {
               <input
                 id="vendor-phone"
                 className="input"
-                value={form.phone}
-                onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                value={activeEditorTab.form.phone}
+                onChange={(event) =>
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, phone: event.target.value }))
+                }
               />
             </div>
 
@@ -254,9 +259,9 @@ export function VendorsPage() {
               <input
                 id="vendor-terms"
                 className="input"
-                value={form.payment_terms}
+                value={activeEditorTab.form.payment_terms}
                 onChange={(event) =>
-                  setForm((current) => ({ ...current, payment_terms: event.target.value }))
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, payment_terms: event.target.value }))
                 }
               />
             </div>
@@ -270,8 +275,10 @@ export function VendorsPage() {
                 type="number"
                 min="0"
                 className="input"
-                value={form.credit_days}
-                onChange={(event) => setForm((current) => ({ ...current, credit_days: event.target.value }))}
+                value={activeEditorTab.form.credit_days}
+                onChange={(event) =>
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, credit_days: event.target.value }))
+                }
               />
             </div>
 
@@ -282,9 +289,9 @@ export function VendorsPage() {
               <select
                 id="vendor-status"
                 className="input"
-                value={form.status}
+                value={activeEditorTab.form.status}
                 onChange={(event) =>
-                  setForm((current) => ({
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
                     ...current,
                     status: event.target.value as 'active' | 'inactive'
                   }))
@@ -302,8 +309,10 @@ export function VendorsPage() {
               <textarea
                 id="vendor-address"
                 className="input min-h-24"
-                value={form.address}
-                onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))}
+                value={activeEditorTab.form.address}
+                onChange={(event) =>
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, address: event.target.value }))
+                }
               />
             </div>
 
@@ -314,8 +323,10 @@ export function VendorsPage() {
               <textarea
                 id="vendor-notes"
                 className="input min-h-28"
-                value={form.notes}
-                onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))}
+                value={activeEditorTab.form.notes}
+                onChange={(event) =>
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, notes: event.target.value }))
+                }
               />
             </div>
 
@@ -323,19 +334,18 @@ export function VendorsPage() {
               <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
                 {saveMutation.isPending
                   ? 'Saving...'
-                  : editingVendor
+                  : activeEditorTab.type === 'edit'
                     ? 'Update vendor'
                     : 'Create vendor'}
               </button>
-              <button type="button" className="btn btn-secondary" onClick={resetEditor}>
+              <button type="button" className="btn btn-secondary" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
                 Cancel
               </button>
             </div>
           </form>
         </section>
-      ) : null}
-
-      <div className="card">
+        ) : (
+          <div className="card">
         <input
           className="input"
           placeholder="Search vendors"
@@ -391,7 +401,7 @@ export function VendorsPage() {
                 header: 'Actions',
                 cell: (vendor) => (
                   <div className="flex items-center gap-2">
-                    <button type="button" className="btn btn-secondary btn-icon" onClick={() => startEdit(vendor)}>
+                    <button type="button" className="btn btn-secondary btn-icon" onClick={() => crudTabs.openEditTab(vendor)}>
                       <Pencil className="h-4 w-4" />
                     </button>
                     <button
@@ -412,7 +422,9 @@ export function VendorsPage() {
             ]}
           />
         </div>
-      </div>
+          </div>
+        )}
+      </CrudTabs>
     </div>
   );
 }

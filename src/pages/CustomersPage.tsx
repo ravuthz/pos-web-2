@@ -2,9 +2,11 @@ import { useDeferredValue, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Plus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { CrudTabs } from '@/components/ui/CrudTabs';
 import { DataTable } from '@/components/ui/DataTable';
 import { ErrorState, LoadingState } from '@/components/ui/States';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { CRUD_MAIN_TAB_ID, type CrudEditorTab, useCrudTabs } from '@/lib/crudTabs';
 import { DEFAULT_TABLE_PAGE_SIZE, TABLE_PAGE_SIZE_OPTIONS, getPaginationMeta } from '@/lib/pagination';
 import { customerService } from '@/services/customer';
 import { extractApiError } from '@/lib/api';
@@ -29,10 +31,16 @@ export function CustomersPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_TABLE_PAGE_SIZE);
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
-  const [form, setForm] = useState<CustomerFormState>(emptyForm);
   const deferredSearch = useDeferredValue(search);
+  const crudTabs = useCrudTabs<CustomerFormState, Customer>({
+    createEmptyForm: () => ({ ...emptyForm }),
+    getEditForm: (customer) => ({
+      name: customer.name ?? '',
+      phone: customer.phone ?? '',
+      email: customer.email ?? '',
+      address: customer.address ?? ''
+    })
+  });
 
   const customersQuery = useQuery({
     queryKey: ['customers', deferredSearch, page, pageSize],
@@ -46,7 +54,8 @@ export function CustomersPage() {
   });
 
   const saveMutation = useMutation({
-    mutationFn: async (payload: CustomerFormState) => {
+    mutationFn: async (tab: CrudEditorTab<CustomerFormState>) => {
+      const payload = tab.form;
       const data = {
         name: payload.name.trim(),
         phone: payload.phone.trim() || undefined,
@@ -54,15 +63,15 @@ export function CustomersPage() {
         address: payload.address.trim() || undefined
       };
 
-      if (editingCustomer) {
-        return customerService.update(editingCustomer.id, data);
+      if (tab.type === 'edit' && tab.entityId) {
+        return customerService.update(tab.entityId, data);
       }
 
       return customerService.create(data);
     },
-    onSuccess: async () => {
-      toast.success(editingCustomer ? 'Customer updated.' : 'Customer created.');
-      resetEditor();
+    onSuccess: async (_data, tab) => {
+      toast.success(tab.type === 'edit' ? 'Customer updated.' : 'Customer created.');
+      crudTabs.closeTab(tab.id);
       await queryClient.invalidateQueries({ queryKey: ['customers'] });
     },
     onError: (error) => {
@@ -84,29 +93,15 @@ export function CustomersPage() {
   const customers = (customersQuery.data?.data ?? []) as Customer[];
   const customersMeta = getPaginationMeta(customersQuery.data?.meta);
   const isCustomersInitialLoad = customersQuery.isLoading && !customersQuery.data;
-
-  function resetEditor() {
-    setIsEditorOpen(false);
-    setEditingCustomer(null);
-    setForm(emptyForm);
-  }
-
-  function startCreate() {
-    setEditingCustomer(null);
-    setForm(emptyForm);
-    setIsEditorOpen(true);
-  }
-
-  function startEdit(customer: Customer) {
-    setEditingCustomer(customer);
-    setForm({
-      name: customer.name ?? '',
-      phone: customer.phone ?? '',
-      email: customer.email ?? '',
-      address: customer.address ?? ''
-    });
-    setIsEditorOpen(true);
-  }
+  const activeEditorTab = crudTabs.activeEditorTab;
+  const tabItems = [
+    { id: CRUD_MAIN_TAB_ID, type: 'main' as const, title: 'Customers' },
+    ...crudTabs.tabs.map((tab) => ({
+      id: tab.id,
+      type: tab.type,
+      title: tab.title
+    }))
+  ];
 
   if (isCustomersInitialLoad) {
     return <LoadingState label="Loading customers..." />;
@@ -122,27 +117,33 @@ export function CustomersPage() {
         title="Customers"
         subtitle="Manage customer records, contact details, and sales-linked accounts."
         actions={
-          <button type="button" className="btn btn-primary" onClick={startCreate}>
+          <button type="button" className="btn btn-primary" onClick={() => crudTabs.openCreateTab()}>
             <Plus className="h-4 w-4" />
             New customer
           </button>
         }
       />
 
-      {isEditorOpen ? (
-        <section className="card space-y-4">
+      <CrudTabs
+        activeTabId={crudTabs.activeTabId}
+        tabs={tabItems}
+        onSelectTab={crudTabs.setActiveTabId}
+        onCloseTab={crudTabs.closeTab}
+      >
+        {activeEditorTab ? (
+          <section className="card space-y-4">
           <div className="card-header mb-0">
             <div>
               <h2 className="text-lg font-semibold text-surface-900">
-                {editingCustomer ? 'Edit customer' : 'Create customer'}
+                {activeEditorTab.type === 'edit' ? 'Edit customer' : 'Create customer'}
               </h2>
               <p className="text-sm text-surface-500">
-                {editingCustomer
+                {activeEditorTab.type === 'edit'
                   ? 'Update customer contact information.'
                   : 'Create a new customer profile for POS and sales history.'}
               </p>
             </div>
-            <button type="button" className="btn btn-ghost btn-icon" onClick={resetEditor}>
+            <button type="button" className="btn btn-ghost btn-icon" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -151,7 +152,7 @@ export function CustomersPage() {
             className="grid gap-4 md:grid-cols-2"
             onSubmit={(event) => {
               event.preventDefault();
-              saveMutation.mutate(form);
+              saveMutation.mutate(activeEditorTab);
             }}
           >
             <div>
@@ -161,8 +162,10 @@ export function CustomersPage() {
               <input
                 id="customer-name"
                 className="input"
-                value={form.name}
-                onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                value={activeEditorTab.form.name}
+                onChange={(event) =>
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, name: event.target.value }))
+                }
                 required
               />
             </div>
@@ -174,8 +177,10 @@ export function CustomersPage() {
               <input
                 id="customer-phone"
                 className="input"
-                value={form.phone}
-                onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
+                value={activeEditorTab.form.phone}
+                onChange={(event) =>
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, phone: event.target.value }))
+                }
               />
             </div>
 
@@ -187,8 +192,10 @@ export function CustomersPage() {
                 id="customer-email"
                 type="email"
                 className="input"
-                value={form.email}
-                onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+                value={activeEditorTab.form.email}
+                onChange={(event) =>
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, email: event.target.value }))
+                }
               />
             </div>
 
@@ -199,8 +206,10 @@ export function CustomersPage() {
               <textarea
                 id="customer-address"
                 className="input min-h-28"
-                value={form.address}
-                onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))}
+                value={activeEditorTab.form.address}
+                onChange={(event) =>
+                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, address: event.target.value }))
+                }
               />
             </div>
 
@@ -208,19 +217,18 @@ export function CustomersPage() {
               <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
                 {saveMutation.isPending
                   ? 'Saving...'
-                  : editingCustomer
+                  : activeEditorTab.type === 'edit'
                     ? 'Update customer'
                     : 'Create customer'}
               </button>
-              <button type="button" className="btn btn-secondary" onClick={resetEditor}>
+              <button type="button" className="btn btn-secondary" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
                 Cancel
               </button>
             </div>
           </form>
         </section>
-      ) : null}
-
-      <div className="card">
+        ) : (
+          <div className="card">
         <input
           className="input"
           placeholder="Search customers"
@@ -276,7 +284,7 @@ export function CustomersPage() {
                 header: 'Actions',
                 cell: (customer) => (
                   <div className="flex items-center gap-2">
-                    <button type="button" className="btn btn-secondary btn-icon" onClick={() => startEdit(customer)}>
+                    <button type="button" className="btn btn-secondary btn-icon" onClick={() => crudTabs.openEditTab(customer)}>
                       <Pencil className="h-4 w-4" />
                     </button>
                     <button
@@ -297,7 +305,9 @@ export function CustomersPage() {
             ]}
           />
         </div>
-      </div>
+          </div>
+        )}
+      </CrudTabs>
     </div>
   );
 }
