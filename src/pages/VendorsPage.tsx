@@ -1,6 +1,6 @@
 import { useDeferredValue, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Pencil, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { CrudTabs } from '@/components/ui/CrudTabs';
 import { DataTable } from '@/components/ui/DataTable';
@@ -139,12 +139,6 @@ export function VendorsPage() {
       <PageHeader
         title="Vendors"
         subtitle="Manage suppliers used for purchases and expense association."
-        actions={
-          <button type="button" className="btn btn-primary" onClick={() => crudTabs.openCreateTab()}>
-            <Plus className="h-4 w-4" />
-            New vendor
-          </button>
-        }
       />
 
       <CrudTabs
@@ -152,6 +146,7 @@ export function VendorsPage() {
         tabs={tabItems}
         onSelectTab={crudTabs.setActiveTabId}
         onCloseTab={crudTabs.closeTab}
+        onCreateTab={crudTabs.openCreateTab}
       >
         {activeEditorTab ? (
           <section className="card space-y-4">
@@ -345,7 +340,7 @@ export function VendorsPage() {
           </form>
         </section>
         ) : (
-          <div className="card">
+          <div className="space-y-4">
         <input
           className="input"
           placeholder="Search vendors"
@@ -356,7 +351,7 @@ export function VendorsPage() {
           }}
         />
 
-        <div className="mt-4 overflow-hidden rounded-2xl border border-surface-200">
+        <div className="overflow-hidden rounded-2xl border border-surface-200">
           <DataTable
             data={vendors}
             keyExtractor={(vendor) => vendor.id}

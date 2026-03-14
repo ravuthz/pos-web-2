@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Pencil, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { CrudTabs } from '@/components/ui/CrudTabs';
@@ -196,12 +196,6 @@ export function ExpensesPage() {
       <PageHeader
         title="Expenses"
         subtitle="Create, review, approve, and settle branch expenses."
-        actions={
-          <button type="button" className="btn btn-primary" onClick={() => crudTabs.openCreateTab()}>
-            <Plus className="h-4 w-4" />
-            New expense
-          </button>
-        }
       />
 
       <CrudTabs
@@ -209,6 +203,7 @@ export function ExpensesPage() {
         tabs={tabItems}
         onSelectTab={crudTabs.setActiveTabId}
         onCloseTab={crudTabs.closeTab}
+        onCreateTab={crudTabs.openCreateTab}
       >
         {activeEditorTab ? (
           <section className="card space-y-4">
@@ -393,122 +388,122 @@ export function ExpensesPage() {
           )}
         </section>
         ) : (
-          <>
-      <div className="grid gap-4 md:grid-cols-3">
-        <StatCard
-          label="Today Paid"
-          value={formatCurrency(summary.today?.total ?? 0)}
-          description={`${formatNumber(summary.today?.count ?? 0)} expenses paid today`}
-          tone="warning"
-        />
-        <StatCard
-          label="Month Paid"
-          value={formatCurrency(summary.this_month?.total ?? 0)}
-          description={`${formatNumber(summary.this_month?.count ?? 0)} expenses paid this month`}
-        />
-        <StatCard
-          label="Pending"
-          value={formatCurrency(summary.pending?.total ?? 0)}
-          description={`${formatNumber(summary.pending?.count ?? 0)} expenses awaiting approval`}
-          tone="danger"
-        />
-      </div>
+          <div className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-3">
+              <StatCard
+                label="Today Paid"
+                value={formatCurrency(summary.today?.total ?? 0)}
+                description={`${formatNumber(summary.today?.count ?? 0)} expenses paid today`}
+                tone="warning"
+              />
+              <StatCard
+                label="Month Paid"
+                value={formatCurrency(summary.this_month?.total ?? 0)}
+                description={`${formatNumber(summary.this_month?.count ?? 0)} expenses paid this month`}
+              />
+              <StatCard
+                label="Pending"
+                value={formatCurrency(summary.pending?.total ?? 0)}
+                description={`${formatNumber(summary.pending?.count ?? 0)} expenses awaiting approval`}
+                tone="danger"
+              />
+            </div>
 
-      <div className="card overflow-hidden">
-        <DataTable
-          data={expenses}
-          keyExtractor={(expense) => expense.id}
-          emptyMessage="No expenses found."
-          isUpdating={expensesQuery.isFetching}
-          updateLabel="Refreshing expenses..."
-          pagination={{
-            page,
-            pageSize,
-            totalItems: expensesMeta.totalItems,
-            totalPages: expensesMeta.totalPages,
-            pageSizeOptions: TABLE_PAGE_SIZE_OPTIONS,
-            onPageChange: setPage,
-            onPageSizeChange: (nextPageSize) => {
-              setPageSize(nextPageSize);
-              setPage(1);
-            }
-          }}
-          columns={[
-            {
-              header: 'Expense',
-              cell: (expense) => (
-                <div>
-                  <p className="font-medium text-surface-900">{expense.expense_number}</p>
-                  <p className="text-xs text-surface-500">{expense.category_label ?? expense.category}</p>
-                </div>
-              )
-            },
-            {
-              header: 'Amount',
-              cell: (expense) => formatCurrency(expense.amount ?? 0)
-            },
-            {
-              header: 'Payment',
-              cell: (expense) => expense.payment_method_label ?? expense.payment_method ?? '-'
-            },
-            {
-              header: 'Date',
-              cell: (expense) => formatDateTime(expense.expense_date)
-            },
-            {
-              header: 'Status',
-              cell: (expense) => <StatusBadge value={expense.status} />
-            },
-            {
-              header: 'Actions',
-                cell: (expense) => (
-                  <div className="flex flex-wrap items-center gap-2">
-                  {expense.is_editable ? (
-                    <button type="button" className="btn btn-secondary btn-icon" onClick={() => crudTabs.openEditTab(expense)}>
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                  ) : null}
-                  {expense.is_approvable ? (
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => approveMutation.mutate(expense.id)}
-                      disabled={approveMutation.isPending}
-                    >
-                      Approve
-                    </button>
-                  ) : null}
-                  {expense.can_mark_as_paid ? (
-                    <button
-                      type="button"
-                      className="btn btn-primary btn-sm"
-                      onClick={() => payMutation.mutate(expense.id)}
-                      disabled={payMutation.isPending}
-                    >
-                      Mark paid
-                    </button>
-                  ) : null}
-                  {expense.is_editable ? (
-                    <button
-                      type="button"
-                      className="btn btn-danger btn-icon"
-                      onClick={() => {
-                        if (window.confirm(`Delete expense "${expense.expense_number}"?`)) {
-                          deleteMutation.mutate(expense.id);
-                        }
-                      }}
-                      disabled={deleteMutation.isPending}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  ) : null}
-                </div>
-              )
-            }
-          ]}
-          />
-        </div>
-          </>
+            <div className="overflow-hidden rounded-2xl border border-surface-200">
+              <DataTable
+                data={expenses}
+                keyExtractor={(expense) => expense.id}
+                emptyMessage="No expenses found."
+                isUpdating={expensesQuery.isFetching}
+                updateLabel="Refreshing expenses..."
+                pagination={{
+                  page,
+                  pageSize,
+                  totalItems: expensesMeta.totalItems,
+                  totalPages: expensesMeta.totalPages,
+                  pageSizeOptions: TABLE_PAGE_SIZE_OPTIONS,
+                  onPageChange: setPage,
+                  onPageSizeChange: (nextPageSize) => {
+                    setPageSize(nextPageSize);
+                    setPage(1);
+                  }
+                }}
+                columns={[
+                  {
+                    header: 'Expense',
+                    cell: (expense) => (
+                      <div>
+                        <p className="font-medium text-surface-900">{expense.expense_number}</p>
+                        <p className="text-xs text-surface-500">{expense.category_label ?? expense.category}</p>
+                      </div>
+                    )
+                  },
+                  {
+                    header: 'Amount',
+                    cell: (expense) => formatCurrency(expense.amount ?? 0)
+                  },
+                  {
+                    header: 'Payment',
+                    cell: (expense) => expense.payment_method_label ?? expense.payment_method ?? '-'
+                  },
+                  {
+                    header: 'Date',
+                    cell: (expense) => formatDateTime(expense.expense_date)
+                  },
+                  {
+                    header: 'Status',
+                    cell: (expense) => <StatusBadge value={expense.status} />
+                  },
+                  {
+                    header: 'Actions',
+                    cell: (expense) => (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {expense.is_editable ? (
+                          <button type="button" className="btn btn-secondary btn-icon" onClick={() => crudTabs.openEditTab(expense)}>
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                        ) : null}
+                        {expense.is_approvable ? (
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => approveMutation.mutate(expense.id)}
+                            disabled={approveMutation.isPending}
+                          >
+                            Approve
+                          </button>
+                        ) : null}
+                        {expense.can_mark_as_paid ? (
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-sm"
+                            onClick={() => payMutation.mutate(expense.id)}
+                            disabled={payMutation.isPending}
+                          >
+                            Mark paid
+                          </button>
+                        ) : null}
+                        {expense.is_editable ? (
+                          <button
+                            type="button"
+                            className="btn btn-danger btn-icon"
+                            onClick={() => {
+                              if (window.confirm(`Delete expense "${expense.expense_number}"?`)) {
+                                deleteMutation.mutate(expense.id);
+                              }
+                            }}
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        ) : null}
+                      </div>
+                    )
+                  }
+                ]}
+              />
+            </div>
+          </div>
         )}
       </CrudTabs>
     </div>

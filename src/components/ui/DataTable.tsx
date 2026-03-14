@@ -34,6 +34,7 @@ export function DataTable<T>({
   updateLabel = 'Updating results...',
   pagination
 }: DataTableProps<T>) {
+  const shouldShowPagination = Boolean(pagination && pagination.totalItems > pagination.pageSize);
   const startItem =
     pagination && pagination.totalItems > 0 ? (pagination.page - 1) * pagination.pageSize + 1 : 0;
   const endItem =
@@ -82,7 +83,7 @@ export function DataTable<T>({
         </div>
       )}
 
-      {pagination ? (
+      {shouldShowPagination && pagination ? (
         <div className="flex flex-col gap-3 border-t border-surface-200 bg-surface-50/80 px-4 py-3 text-sm text-surface-600 md:flex-row md:items-center md:justify-between">
           <p>
             Showing {startItem}-{endItem} of {pagination.totalItems}

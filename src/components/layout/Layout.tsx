@@ -179,13 +179,17 @@ export function Layout() {
                       <div className="grid gap-1">
                         {group.items.map((item) => {
                           const Icon = item.icon;
+                          const isActive = location.pathname === item.to;
 
                           return (
                             <Link
                               key={item.to}
                               to={item.to}
-                              activeProps={{ className: 'bg-primary-700 text-white shadow-soft' }}
-                              className="flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium text-surface-700 transition hover:bg-surface-100"
+                              className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition ${
+                                isActive
+                                  ? 'bg-primary-700 text-white shadow-soft hover:bg-primary-700/70'
+                                  : 'text-surface-700 hover:bg-surface-100'
+                              }`}
                             >
                               <Icon className="h-4 w-4" />
                               <span>{item.label}</span>

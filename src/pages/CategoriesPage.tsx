@@ -1,6 +1,6 @@
 import { useDeferredValue, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Pencil, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { CrudTabs } from '@/components/ui/CrudTabs';
 import { DataTable } from '@/components/ui/DataTable';
@@ -126,12 +126,6 @@ export function CategoriesPage() {
       <PageHeader
         title="Categories"
         subtitle="Organize catalog structure and manage category hierarchy."
-        actions={
-          <button type="button" className="btn btn-primary" onClick={() => crudTabs.openCreateTab()}>
-            <Plus className="h-4 w-4" />
-            New category
-          </button>
-        }
       />
 
       <CrudTabs
@@ -139,6 +133,7 @@ export function CategoriesPage() {
         tabs={tabItems}
         onSelectTab={crudTabs.setActiveTabId}
         onCloseTab={crudTabs.closeTab}
+        onCreateTab={crudTabs.openCreateTab}
       >
         {activeEditorTab ? (
           <section className="card space-y-4">
@@ -253,7 +248,7 @@ export function CategoriesPage() {
           )}
         </section>
         ) : (
-          <div className="card">
+          <div className="space-y-4">
         <input
           className="input"
           placeholder="Search categories"
@@ -264,7 +259,7 @@ export function CategoriesPage() {
           }}
         />
 
-        <div className="mt-4 overflow-hidden rounded-2xl border border-surface-200">
+        <div className="overflow-hidden rounded-2xl border border-surface-200">
           <DataTable
             data={categories}
             keyExtractor={(category) => category.id}

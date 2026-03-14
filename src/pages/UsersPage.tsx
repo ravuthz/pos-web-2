@@ -1,6 +1,6 @@
 import { useDeferredValue, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Pencil, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { CrudTabs } from '@/components/ui/CrudTabs';
 import { DataTable } from '@/components/ui/DataTable';
@@ -193,12 +193,6 @@ export function UsersPage() {
       <PageHeader
         title="Users"
         subtitle="Manage staff accounts, roles, and branch access."
-        actions={
-          <button type="button" className="btn btn-primary" onClick={() => crudTabs.openCreateTab()}>
-            <Plus className="h-4 w-4" />
-            New user
-          </button>
-        }
       />
 
       <CrudTabs
@@ -206,6 +200,7 @@ export function UsersPage() {
         tabs={tabItems}
         onSelectTab={crudTabs.setActiveTabId}
         onCloseTab={crudTabs.closeTab}
+        onCreateTab={crudTabs.openCreateTab}
       >
         {activeEditorTab ? (
           <section className="card space-y-4">
@@ -441,7 +436,7 @@ export function UsersPage() {
           </form>
         </section>
         ) : (
-          <div className="card">
+          <div className="space-y-4">
         <input
           className="input"
           placeholder="Search users by name, username, or email"
@@ -452,7 +447,7 @@ export function UsersPage() {
           }}
         />
 
-        <div className="mt-4 overflow-hidden rounded-2xl border border-surface-200">
+        <div className="overflow-hidden rounded-2xl border border-surface-200">
           <DataTable
             data={users}
             keyExtractor={(user) => user.id}
