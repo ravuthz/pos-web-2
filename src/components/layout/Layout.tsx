@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronRight,
   LayoutDashboard,
+  LogOut,
   Menu,
   Package,
   Palette,
@@ -237,7 +238,7 @@ export function Layout() {
                     </div>
                   </div>
 
-                  <div className="navbar-end hidden lg:flex lg:w-auto lg:flex-row lg:flex-wrap lg:items-center lg:justify-end lg:gap-2">
+                  <div className="navbar-end hidden md:flex md:w-auto md:flex-row md:flex-wrap md:items-center md:justify-end md:gap-2">
                     <label className="flex items-center gap-2 text-sm text-surface-600">
                       <Palette className="h-4 w-4 shrink-0" />
                       <select
@@ -253,15 +254,7 @@ export function Layout() {
                         ))}
                       </select>
                     </label>
-                    <BranchSelector />
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      onClick={() => logoutMutation.mutate()}
-                      disabled={logoutMutation.isPending}
-                    >
-                      {logoutMutation.isPending ? 'Signing out...' : 'Logout'}
-                    </button>
+                    <BranchSelector labelVariant="icon" />
                   </div>
                 </div>
               </header>
@@ -361,11 +354,11 @@ export function Layout() {
                   })}
                 </nav>
 
-                <div className="divider my-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-base-content/35 lg:hidden">
-                  Controls
+                <div className="divider my-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-base-content/35">
+                  Session
                 </div>
 
-                <div className="space-y-3 lg:hidden">
+                <div className="space-y-3 md:hidden">
                   <label className="flex flex-col gap-1.5 text-sm text-surface-600">
                     <span>Theme</span>
                     <select
@@ -383,16 +376,17 @@ export function Layout() {
                   </label>
 
                   <BranchSelector fullWidth showMobileLabel />
-
-                  <button
-                    type="button"
-                    className="btn btn-primary w-full"
-                    onClick={() => logoutMutation.mutate()}
-                    disabled={logoutMutation.isPending}
-                  >
-                    {logoutMutation.isPending ? 'Signing out...' : 'Logout'}
-                  </button>
                 </div>
+
+                <button
+                  type="button"
+                  className="btn btn-primary w-full justify-start gap-3"
+                  onClick={() => logoutMutation.mutate()}
+                  disabled={logoutMutation.isPending}
+                >
+                  <LogOut className="h-4 w-4 shrink-0" />
+                  <span>{logoutMutation.isPending ? 'Signing out...' : 'Logout'}</span>
+                </button>
               </div>
             </aside>
           </div>

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Store } from 'lucide-react';
 import { branchService } from '@/services/branch';
 import { useAuthStore } from '@/store/auth';
 import { useBranchStore } from '@/store/branch';
@@ -9,6 +10,7 @@ interface BranchSelectorProps {
   className?: string;
   fullWidth?: boolean;
   showMobileLabel?: boolean;
+  labelVariant?: 'text' | 'icon';
 }
 
 function toBranchOption(branch: Branch) {
@@ -21,7 +23,8 @@ function toBranchOption(branch: Branch) {
 export function BranchSelector({
   className = '',
   fullWidth = false,
-  showMobileLabel = false
+  showMobileLabel = false,
+  labelVariant = 'text'
 }: BranchSelectorProps) {
   const user = useAuthStore((state) => state.user);
   const selectedBranchId = useBranchStore((state) => state.selectedBranchId);
@@ -76,11 +79,16 @@ export function BranchSelector({
         fullWidth ? 'w-full flex-col items-stretch gap-1.5' : 'items-center gap-2'
       } ${className}`.trim()}
     >
-      <span className={showMobileLabel ? '' : 'hidden sm:inline'}>Branch</span>
+      {labelVariant === 'icon' ? (
+        <Store className="h-4 w-4 shrink-0" aria-hidden="true" />
+      ) : (
+        <span className={showMobileLabel ? '' : 'hidden sm:inline'}>Branch</span>
+      )}
       <select
         className={`select select-bordered min-h-11 rounded-box bg-base-100 text-base-content ${
           fullWidth ? 'w-full min-w-0' : 'min-w-40'
         }`}
+        aria-label={labelVariant === 'icon' ? 'Branch' : undefined}
         value={selectedBranchId ?? ''}
         onChange={(event) => {
           const value = event.target.value;
