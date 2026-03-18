@@ -54,7 +54,7 @@ interface BarcodeDetectorInstance {
 }
 
 interface BarcodeDetectorConstructor {
-  new (options?: { formats?: string[] }): BarcodeDetectorInstance;
+  new(options?: { formats?: string[] }): BarcodeDetectorInstance;
   getSupportedFormats?: () => Promise<string[]>;
 }
 
@@ -101,8 +101,7 @@ export function MobilePage() {
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isScannerStarting, setIsScannerStarting] = useState(false);
   const [scannerError, setScannerError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [barcodeQuery, setBarcodeQuery] = useState('');
+  const [lookupQuery, setLookupQuery] = useState('');
   const [searchResults, setSearchResults] = useState<MobileProduct[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
@@ -209,7 +208,7 @@ export function MobilePage() {
     },
     onSuccess: (product: Product & { quantity_on_hand?: number; stock?: { quantity_on_hand?: number } | null }) => {
       addToCart(normalizeProduct(product), { closeSearchModal: true });
-      setBarcodeQuery('');
+      setLookupQuery('');
       setMessage(null);
     },
     onError: (error) => {
@@ -256,8 +255,7 @@ export function MobilePage() {
       setPaymentReceived('0');
       setNotes('');
       setSearchResults([]);
-      setSearchQuery('');
-      setBarcodeQuery('');
+      setLookupQuery('');
       setIsCartModalOpen(false);
       toast.success(response.message || 'Sale completed successfully.');
 
@@ -350,7 +348,17 @@ export function MobilePage() {
     return 'Unable to start the camera scanner.';
   }
 
-  function submitBarcodeLookup(value = barcodeQuery) {
+  function submitSearchLookup() {
+    const normalizedValue = lookupQuery.trim();
+
+    if (!normalizedValue) {
+      return;
+    }
+
+    searchMutation.mutate(normalizedValue);
+  }
+
+  function submitBarcodeLookup(value: string) {
     const normalizedValue = value.trim();
 
     if (!normalizedValue) {
@@ -358,7 +366,7 @@ export function MobilePage() {
     }
 
     closeScanner({ resetError: true });
-    setBarcodeQuery(normalizedValue);
+    setLookupQuery(normalizedValue);
     barcodeMutation.mutate(normalizedValue);
   }
 
@@ -463,9 +471,7 @@ export function MobilePage() {
             .find((value): value is string => Boolean(value));
 
           if (detectedCode) {
-            setBarcodeQuery(detectedCode);
-            closeScanner({ resetError: true });
-            barcodeMutation.mutate(detectedCode);
+            submitBarcodeLookup(detectedCode);
             return;
           }
         } catch (error) {
@@ -745,8 +751,7 @@ export function MobilePage() {
           <div className="card max-h-[88vh] w-full max-w-3xl overflow-hidden border border-base-300 bg-base-100 shadow-2xl">
             <div className="flex items-center justify-between border-b border-base-300 px-5 py-4">
               <div>
-                <h2 className="text-lg font-semibold text-surface-900">Search or scan</h2>
-                <p className="text-sm text-surface-500">Find a product by name, code, barcode, or direct scan.</p>
+                <h2 className="text-lg font-semibold text-surface-900">Search or scan product</h2>
               </div>
               <button
                 type="button"
@@ -759,72 +764,43 @@ export function MobilePage() {
             </div>
 
             <div className="space-y-4 overflow-y-auto p-5">
-              <div className="grid gap-3 md:grid-cols-[1fr_auto_auto]">
-                <div>
-                  <label className="label" htmlFor="mobile-search-products">
-                    Search products
-                  </label>
+              <div>
+
+                <div className="space-y-3">
                   <input
                     id="mobile-search-products"
                     className="input input-bordered w-full"
-                    placeholder="Search by name, product code, or barcode"
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search by name, code, or barcode"
+                    value={lookupQuery}
+                    onChange={(event) => setLookupQuery(event.target.value)}
                     onKeyDown={(event) => {
-                      if (event.key === 'Enter' && searchQuery.trim()) {
+                      if (event.key === 'Enter' && lookupQuery.trim()) {
                         event.preventDefault();
-                        searchMutation.mutate(searchQuery);
+                        submitSearchLookup();
                       }
                     }}
                   />
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => void startCameraScanner()}
+                      disabled={isScannerStarting}
+                    >
+                      <ScanLine className="h-4 w-4" />
+                      {isScannerStarting ? 'Opening...' : 'Scan'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={() => submitSearchLookup()}
+                      disabled={searchMutation.isPending || lookupQuery.trim().length === 0}
+                    >
+                      <Search className="h-4 w-4" />
+                      {searchMutation.isPending ? 'Searching...' : 'Search'}
+                    </button>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  className="btn btn-primary self-end"
-                  onClick={() => searchMutation.mutate(searchQuery)}
-                  disabled={searchMutation.isPending || searchQuery.trim().length === 0}
-                >
-                  {searchMutation.isPending ? 'Searching...' : 'Search'}
-                </button>
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-                <div>
-                  <label className="label" htmlFor="mobile-scan-barcode">
-                    Scan barcode
-                  </label>
-                  <input
-                    id="mobile-scan-barcode"
-                    className="input input-bordered w-full"
-                    placeholder="Enter or scan a barcode"
-                    value={barcodeQuery}
-                    onChange={(event) => setBarcodeQuery(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' && barcodeQuery.trim()) {
-                        event.preventDefault();
-                        submitBarcodeLookup();
-                      }
-                    }}
-                  />
-                </div>
-                <button
-                  type="button"
-                  className="btn btn-outline self-end"
-                  onClick={() => submitBarcodeLookup()}
-                  disabled={barcodeMutation.isPending || barcodeQuery.trim().length === 0}
-                >
-                  <Search className="h-4 w-4" />
-                  {barcodeMutation.isPending ? 'Checking...' : 'Lookup'}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary self-end"
-                  onClick={() => void startCameraScanner()}
-                  disabled={isScannerStarting}
-                >
-                  <ScanLine className="h-4 w-4" />
-                  {isScannerStarting ? 'Opening...' : 'Scan'}
-                </button>
               </div>
 
               {message ? (
@@ -878,7 +854,7 @@ export function MobilePage() {
                     </div>
 
                     <p className="text-sm text-surface-500">
-                      Use the rear camera for better focus. If the browser blocks camera access, enter the barcode manually instead.
+                      Use the rear camera for better focus. When a barcode is detected it will fill the lookup field and add the product automatically.
                     </p>
                   </div>
                 </div>
@@ -889,28 +865,44 @@ export function MobilePage() {
                   Search results will appear here.
                 </div>
               ) : (
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-2">
                   {searchResults.map((product) => (
                     <button
                       key={product.id}
                       type="button"
-                      className="card border border-base-300 bg-base-100 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary hover:shadow-md"
+                      className="flex items-center gap-3 rounded-[calc(var(--radius-box)*1.1)] border border-base-300 bg-base-100 p-3 text-left shadow-sm transition-all duration-200 hover:border-primary hover:shadow-md"
                       onClick={() => addToCart(product, { closeSearchModal: true })}
                     >
-                      <div className="card-body gap-2 p-4">
+                      <div className="avatar">
+                        <div className="h-14 w-14 rounded-[calc(var(--radius-box)*0.9)] border border-base-300 bg-base-200">
+                          {product.image_url ? (
+                            <img
+                              src={product.image_url}
+                              alt={product.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-primary/8 text-sm font-semibold text-primary/70">
+                              {product.name.slice(0, 1).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <h3 className="truncate font-medium text-surface-900">{product.name}</h3>
-                            <p className="text-sm text-surface-500">
+                            <p className="truncate text-sm text-surface-500">
                               {product.code ?? product.barcode ?? 'No code'}
                             </p>
                           </div>
-                          <span className="font-semibold text-primary-700">
+                          <span className="shrink-0 font-semibold text-primary-700">
                             {formatCurrency(product.selling_price)}
                           </span>
                         </div>
 
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="mt-2 flex items-center justify-between gap-2">
                           <span className="badge badge-outline">
                             {product.category?.name ?? 'Uncategorized'}
                           </span>
