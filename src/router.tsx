@@ -21,6 +21,7 @@ import { ReportsPage } from '@/pages/ReportsPage';
 import { VendorsPage } from '@/pages/VendorsPage';
 import { ExpensesPage } from '@/pages/ExpensesPage';
 import { ShiftsPage } from '@/pages/ShiftsPage';
+import { MobilePage } from '@/pages/MobilePage';
 
 function RootComponent() {
   return <Outlet />;
@@ -70,6 +71,12 @@ const posRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: '/pos',
   component: PosPage
+});
+
+const mobileRoute = createRoute({
+  getParentRoute: () => protectedRoute,
+  path: '/mobile',
+  component: MobilePage
 });
 
 const productsRoute = createRoute({
@@ -143,6 +150,7 @@ const routeTree = rootRoute.addChildren([
   protectedRoute.addChildren([
     indexRoute,
     posRoute,
+    mobileRoute,
     productsRoute,
     salesRoute,
     categoriesRoute,

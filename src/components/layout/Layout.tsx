@@ -15,6 +15,7 @@ import {
   Receipt,
   ScanLine,
   ShoppingBag,
+  Smartphone,
   Shuffle,
   Store,
   Truck,
@@ -33,6 +34,7 @@ type NavRoute =
   | '/'
   | '/reports'
   | '/pos'
+  | '/mobile'
   | '/sales'
   | '/expenses'
   | '/shifts'
@@ -67,6 +69,7 @@ const navItems: NavGroup[] = [
     label: 'Operations',
     items: [
       { to: '/pos', label: 'POS', icon: ScanLine },
+      { to: '/mobile', label: 'Mobile', icon: Smartphone },
       { to: '/sales', label: 'Sales', icon: Receipt },
       { to: '/expenses', label: 'Expenses', icon: Wallet },
       { to: '/shifts', label: 'Shifts', icon: Store }
@@ -199,11 +202,7 @@ export function Layout() {
       style={shellBackgroundStyle}
     >
       <div className="container mx-auto h-full min-h-0 max-w-[1600px] overflow-hidden px-4 py-4 md:px-6">
-        <div
-          className={`drawer h-full min-h-0 overflow-hidden [grid-template-rows:minmax(0,1fr)] lg:drawer-open ${
-            isDrawerOpen ? 'drawer-open' : ''
-          }`}
-        >
+        <div className="drawer h-full min-h-0 overflow-hidden [grid-template-rows:minmax(0,1fr)] lg:drawer-open">
           <input
             id="app-sidebar-drawer"
             type="checkbox"
