@@ -163,10 +163,6 @@ export function MobilePage() {
         },
         onSuccess: (product: Product & { quantity_on_hand?: number; stock?: { quantity_on_hand?: number } | null }) => {
             addToCart(normalizeProduct(product), { closeSearchModal: true });
-<<<<<<< HEAD
-            setLookupQuery('');
-=======
->>>>>>> 02bac4c (Update mobile scan)
             setMessage(null);
         },
         onError: (error) => {
@@ -214,10 +210,6 @@ export function MobilePage() {
             setNotes('');
             setSearchResults([]);
             setLookupQuery('');
-<<<<<<< HEAD
-            setIsCartModalOpen(false);
-=======
->>>>>>> 02bac4c (Update mobile scan)
             toast.success(response.message || 'Sale completed successfully.');
 
             await Promise.all([
@@ -296,20 +288,14 @@ export function MobilePage() {
         const normalizedValue = lookupQuery.trim();
 
         if (!normalizedValue) {
-<<<<<<< HEAD
+            setSearchResults([]);
+            setIsSearchModalOpen(false);
             return;
         }
 
-=======
-      setSearchResults([]);
-      setIsSearchModalOpen(false);
-      return;
-    }
-
-    closeScanner({ resetError: true });
-    setMessage(null);
-    setIsSearchModalOpen(true);
->>>>>>> 02bac4c (Update mobile scan)
+        closeScanner({ resetError: true });
+        setMessage(null);
+        setIsSearchModalOpen(true);
         searchMutation.mutate(normalizedValue);
     }
 
