@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
 import { toast } from 'sonner';
+import { CrudEditorLayout, CRUD_EDITOR_ACTIONS_CLASS, CRUD_EDITOR_FORM_GRID_CLASS } from '@/components/ui/CrudEditorLayout';
 import { CrudTabs } from '@/components/ui/CrudTabs';
 import { DataTable } from '@/components/ui/DataTable';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
@@ -112,6 +112,9 @@ export function StockMovementsPage() {
     a.name.localeCompare(b.name)
   );
   const activeEditorTab = crudTabs.activeEditorTab;
+  const inputClass = 'input input-bordered w-full';
+  const selectClass = 'select select-bordered w-full';
+  const textareaClass = 'textarea textarea-bordered min-h-24 w-full';
   const tabItems = [
     { id: CRUD_MAIN_TAB_ID, type: 'main' as const, title: 'Stock Movements' },
     ...crudTabs.tabs.map((tab) => ({ id: tab.id, type: tab.type, title: tab.title }))
@@ -132,23 +135,11 @@ export function StockMovementsPage() {
         onCreateTab={crudTabs.openCreateTab}
       >
         {activeEditorTab ? (
-          <section className="card space-y-4">
-            <div className="card-header mb-0">
-              <div>
-                <h2 className="text-lg font-semibold text-surface-900">Stock adjustment</h2>
-                <p className="text-sm text-surface-500">
-                  Increase stock with a positive value or reduce stock with a negative value.
-                </p>
-              </div>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm btn-square"
-                onClick={() => crudTabs.closeTab(activeEditorTab.id)}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
+          <CrudEditorLayout
+            title="Stock adjustment"
+            description="Increase stock with a positive value or reduce stock with a negative value."
+            onClose={() => crudTabs.closeTab(activeEditorTab.id)}
+          >
             {!selectedBranchId ? (
               <EmptyState
                 title="Branch required"
@@ -156,19 +147,17 @@ export function StockMovementsPage() {
               />
             ) : (
               <form
-                className="grid gap-4 md:grid-cols-2"
+                className={CRUD_EDITOR_FORM_GRID_CLASS}
                 onSubmit={(event) => {
                   event.preventDefault();
                   adjustMutation.mutate(activeEditorTab);
                 }}
               >
-                <div className="md:col-span-2">
-                  <label className="label" htmlFor="stock-product">
-                    Product
-                  </label>
+                <fieldset className="fieldset md:col-span-2 xl:col-span-3">
+                  <legend className="fieldset-legend">Product</legend>
                   <select
                     id="stock-product"
-                    className="input"
+                    className={selectClass}
                     value={activeEditorTab.form.product_id}
                     onChange={(event) =>
                       crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
@@ -185,17 +174,15 @@ export function StockMovementsPage() {
                       </option>
                     ))}
                   </select>
-                </div>
+                </fieldset>
 
-                <div>
-                  <label className="label" htmlFor="stock-quantity-change">
-                    Quantity change
-                  </label>
+                <fieldset className="fieldset">
+                  <legend className="fieldset-legend">Quantity change</legend>
                   <input
                     id="stock-quantity-change"
                     type="number"
                     step="0.01"
-                    className="input"
+                    className={inputClass}
                     value={activeEditorTab.form.quantity_change}
                     onChange={(event) =>
                       crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
@@ -206,15 +193,13 @@ export function StockMovementsPage() {
                     placeholder="Use negative values to reduce stock"
                     required
                   />
-                </div>
+                </fieldset>
 
-                <div>
-                  <label className="label" htmlFor="stock-notes">
-                    Notes
-                  </label>
-                  <input
+                <fieldset className="fieldset md:col-span-1 xl:col-span-2">
+                  <legend className="fieldset-legend">Notes</legend>
+                  <textarea
                     id="stock-notes"
-                    className="input"
+                    className={textareaClass}
                     value={activeEditorTab.form.notes}
                     onChange={(event) =>
                       crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
@@ -224,9 +209,9 @@ export function StockMovementsPage() {
                     }
                     required
                   />
-                </div>
+                </fieldset>
 
-                <div className="md:col-span-2 flex flex-wrap gap-3">
+                <div className={CRUD_EDITOR_ACTIONS_CLASS}>
                   <button type="submit" className="btn btn-primary" disabled={adjustMutation.isPending}>
                     {adjustMutation.isPending ? 'Saving...' : 'Save adjustment'}
                   </button>
@@ -240,7 +225,7 @@ export function StockMovementsPage() {
                 </div>
               </form>
             )}
-          </section>
+          </CrudEditorLayout>
         ) : (
           <div className="app-table-shell">
             <DataTable

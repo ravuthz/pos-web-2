@@ -1,7 +1,8 @@
 import { useDeferredValue, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Trash2, X } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { CrudEditorLayout, CRUD_EDITOR_ACTIONS_CLASS, CRUD_EDITOR_FORM_GRID_CLASS } from '@/components/ui/CrudEditorLayout';
 import { CrudTabs } from '@/components/ui/CrudTabs';
 import { DataTable } from '@/components/ui/DataTable';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
@@ -103,6 +104,9 @@ export function CategoriesPage() {
   const categoriesMeta = getPaginationMeta(categoriesQuery.data?.meta);
   const isCategoriesInitialLoad = categoriesQuery.isLoading && !categoriesQuery.data;
   const activeEditorTab = crudTabs.activeEditorTab;
+  const inputClass = 'input input-bordered w-full';
+  const selectClass = 'select select-bordered w-full';
+  const textareaClass = 'textarea textarea-bordered min-h-28 w-full';
   const tabItems = [
     { id: CRUD_MAIN_TAB_ID, type: 'main' as const, title: 'Categories' },
     ...crudTabs.tabs.map((tab) => ({ id: tab.id, type: tab.type, title: tab.title }))
@@ -136,117 +140,101 @@ export function CategoriesPage() {
         onCreateTab={crudTabs.openCreateTab}
       >
         {activeEditorTab ? (
-          <section className="card space-y-4">
-          <div className="card-header mb-0">
-            <div>
-              <h2 className="text-lg font-semibold text-surface-900">
-                {activeEditorTab.type === 'edit' ? 'Edit category' : 'Create category'}
-              </h2>
-              <p className="text-sm text-surface-500">
-                {activeEditorTab.type === 'edit'
-                  ? 'Update category name, parent, and description.'
-                  : 'Create a new product category for the selected branch.'}
-              </p>
-            </div>
-            <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
-              <X className="h-4 w-4" />
-            </button>
-          </div>
+          <CrudEditorLayout
+            title={activeEditorTab.type === 'edit' ? 'Edit category' : 'Create category'}
+            description={
+              activeEditorTab.type === 'edit'
+                ? 'Update category name, parent, and description.'
+                : 'Create a new product category for the selected branch.'
+            }
+            onClose={() => crudTabs.closeTab(activeEditorTab.id)}
+          >
+              {activeEditorTab.type === 'create' && !selectedBranchId ? (
+                <EmptyState
+                  title="Branch required"
+                  message="Pick a branch from the header before creating a category."
+                />
+              ) : (
+                <form
+                  className={CRUD_EDITOR_FORM_GRID_CLASS}
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    saveMutation.mutate(activeEditorTab);
+                  }}
+                >
+                  <fieldset className="fieldset">
+                    <legend className="fieldset-legend">Name</legend>
+                    <input
+                      id="category-name"
+                      className={inputClass}
+                      value={activeEditorTab.form.name}
+                      onChange={(event) =>
+                        crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, name: event.target.value }))
+                      }
+                      required
+                    />
+                  </fieldset>
 
-          {activeEditorTab.type === 'create' && !selectedBranchId ? (
-            <EmptyState
-              title="Branch required"
-              message="Pick a branch from the header before creating a category."
-            />
-          ) : (
-            <form
-              className="grid gap-4 md:grid-cols-2"
-              onSubmit={(event) => {
-                event.preventDefault();
-                saveMutation.mutate(activeEditorTab);
-              }}
-            >
-              <div>
-                <label className="label" htmlFor="category-name">
-                  Name
-                </label>
-                <input
-                id="category-name"
-                className="input"
-                value={activeEditorTab.form.name}
-                onChange={(event) =>
-                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, name: event.target.value }))
-                }
-                required
-              />
-            </div>
+                  <fieldset className="fieldset">
+                    <legend className="fieldset-legend">Code</legend>
+                    <input
+                      id="category-code"
+                      className={inputClass}
+                      value={activeEditorTab.form.code}
+                      onChange={(event) =>
+                        crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, code: event.target.value }))
+                      }
+                      disabled={activeEditorTab.type === 'edit'}
+                      placeholder={activeEditorTab.type === 'edit' ? 'Code is fixed after creation' : 'Optional code'}
+                    />
+                  </fieldset>
 
-              <div>
-                <label className="label" htmlFor="category-code">
-                  Code
-                </label>
-                <input
-                id="category-code"
-                className="input"
-                value={activeEditorTab.form.code}
-                onChange={(event) =>
-                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, code: event.target.value }))
-                }
-                disabled={activeEditorTab.type === 'edit'}
-                placeholder={activeEditorTab.type === 'edit' ? 'Code is fixed after creation' : 'Optional code'}
-              />
-            </div>
+                  <fieldset className="fieldset">
+                    <legend className="fieldset-legend">Parent category</legend>
+                    <select
+                      id="category-parent"
+                      className={selectClass}
+                      value={activeEditorTab.form.parent_id}
+                      onChange={(event) =>
+                        crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, parent_id: event.target.value }))
+                      }
+                    >
+                      <option value="">Top level</option>
+                      {parentOptions.map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </fieldset>
 
-              <div>
-                <label className="label" htmlFor="category-parent">
-                  Parent category
-                </label>
-                <select
-                id="category-parent"
-                className="input"
-                value={activeEditorTab.form.parent_id}
-                onChange={(event) =>
-                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, parent_id: event.target.value }))
-                }
-              >
-                  <option value="">Top level</option>
-                  {parentOptions.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <fieldset className="fieldset md:col-span-2 xl:col-span-3">
+                    <legend className="fieldset-legend">Description</legend>
+                    <textarea
+                      id="category-description"
+                      className={textareaClass}
+                      value={activeEditorTab.form.description}
+                      onChange={(event) =>
+                        crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, description: event.target.value }))
+                      }
+                    />
+                  </fieldset>
 
-              <div className="md:col-span-2">
-                <label className="label" htmlFor="category-description">
-                  Description
-                </label>
-                <textarea
-                id="category-description"
-                className="input min-h-28"
-                value={activeEditorTab.form.description}
-                onChange={(event) =>
-                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, description: event.target.value }))
-                }
-              />
-            </div>
-
-              <div className="md:col-span-2 flex flex-wrap gap-3">
-              <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
-                {saveMutation.isPending
-                  ? 'Saving...'
-                  : activeEditorTab.type === 'edit'
-                      ? 'Update category'
-                      : 'Create category'}
-              </button>
-              <button type="button" className="btn btn-secondary" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
-                Cancel
-              </button>
-            </div>
-          </form>
-          )}
-        </section>
+                  <div className={CRUD_EDITOR_ACTIONS_CLASS}>
+                    <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
+                      {saveMutation.isPending
+                        ? 'Saving...'
+                        : activeEditorTab.type === 'edit'
+                          ? 'Update category'
+                          : 'Create category'}
+                    </button>
+                    <button type="button" className="btn btn-secondary" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+          </CrudEditorLayout>
         ) : (
           <div className="space-y-4">
         <input

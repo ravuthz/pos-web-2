@@ -1,7 +1,8 @@
 import { useDeferredValue, useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Search, Trash2, X } from 'lucide-react';
+import { Pencil, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { CrudEditorLayout, CRUD_EDITOR_ACTIONS_CLASS, CRUD_EDITOR_FORM_GRID_CLASS } from '@/components/ui/CrudEditorLayout';
 import { CrudTabs } from '@/components/ui/CrudTabs';
 import { DataTable } from '@/components/ui/DataTable';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
@@ -46,6 +47,14 @@ const emptyForm: ProductFormState = {
   low_stock_alert: '0'
 };
 
+function normalizeExpiryDate(value?: string | null): string {
+  if (!value) {
+    return '';
+  }
+
+  return String(value).slice(0, 10);
+}
+
 export function ProductsPage() {
   const queryClient = useQueryClient();
   const selectedBranchId = useBranchStore((state) => state.selectedBranchId);
@@ -66,8 +75,8 @@ export function ProductsPage() {
       cost_price: String(product.cost_price ?? 0),
       selling_price: String(product.selling_price ?? 0),
       status: product.status === 'inactive' ? 'inactive' : 'active',
-      track_expiry: Boolean(product.track_expiry),
-      expiry_date: product.expiry_date ?? '',
+      track_expiry: Boolean(product.track_expiry || product.expiry_date),
+      expiry_date: normalizeExpiryDate(product.expiry_date),
       low_stock_alert: String(product.low_stock_alert ?? 0)
     })
   });
@@ -191,24 +200,15 @@ export function ProductsPage() {
         onCreateTab={crudTabs.openCreateTab}
       >
         {activeEditorTab ? (
-          <section className="card border border-base-300 bg-base-100 shadow-sm">
-            <div className="card-body gap-5">
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div className="space-y-1">
-                  <h2 className="card-title text-xl">
-                    {activeEditorTab.type === 'edit' ? 'Edit product' : 'Create product'}
-                  </h2>
-                  <p className="text-sm text-base-content/65">
-                    {activeEditorTab.type === 'edit'
-                      ? 'Update pricing, status, and stock rules.'
-                      : 'Create a product for the selected branch inventory.'}
-                  </p>
-                </div>
-                <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
+          <CrudEditorLayout
+            title={activeEditorTab.type === 'edit' ? 'Edit product' : 'Create product'}
+            description={
+              activeEditorTab.type === 'edit'
+                ? 'Update pricing, status, and stock rules.'
+                : 'Create a product for the selected branch inventory.'
+            }
+            onClose={() => crudTabs.closeTab(activeEditorTab.id)}
+          >
               {activeEditorTab.type === 'create' && !selectedBranchId ? (
                 <EmptyState
                   title="Branch required"
@@ -216,7 +216,7 @@ export function ProductsPage() {
                 />
               ) : (
                 <form
-                  className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+                  className={CRUD_EDITOR_FORM_GRID_CLASS}
                   onSubmit={(event) => {
                     event.preventDefault();
                     saveMutation.mutate(activeEditorTab);
@@ -410,10 +410,7 @@ export function ProductsPage() {
                     />
                   </fieldset>
 
-                  <div className="card-actions md:col-span-2 xl:col-span-3 justify-end gap-3 pt-2">
-                    <button type="button" className="btn btn-ghost" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
-                      Cancel
-                    </button>
+                  <div className={CRUD_EDITOR_ACTIONS_CLASS}>
                     <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
                       {saveMutation.isPending
                         ? 'Saving...'
@@ -421,11 +418,13 @@ export function ProductsPage() {
                           ? 'Update product'
                           : 'Create product'}
                     </button>
+                    <button type="button" className="btn btn-secondary" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
+                      Cancel
+                    </button>
                   </div>
                 </form>
               )}
-            </div>
-          </section>
+          </CrudEditorLayout>
         ) : (
           <div className="space-y-4">
             <div className="card border border-base-300 bg-base-100 shadow-sm">
@@ -531,7 +530,18 @@ export function ProductsPage() {
                     },
                     {
                       header: 'Category',
-                      cell: (product) => <span className="badge badge-outline">{product.category?.name ?? 'Uncategorized'}</span>
+                      cell: (product) => {
+                        const categoryName = product.category?.name ?? 'Uncategorized';
+
+                        return (
+                          <span
+                            className="badge badge-outline inline-flex max-w-[140px] truncate whitespace-nowrap align-middle"
+                            title={categoryName}
+                          >
+                            {categoryName}
+                          </span>
+                        );
+                      }
                     },
                     {
                       header: 'Price',

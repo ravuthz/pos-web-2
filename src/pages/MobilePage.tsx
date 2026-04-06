@@ -519,6 +519,27 @@ export function MobilePage() {
         );
     }
 
+    function confirmRemoveFromCart(item: CartItem) {
+        const toastId = toast.warning(`Remove ${item.name} from the order?`, {
+            duration: 5000,
+            description: 'This item will be removed from the order summary.',
+            action: {
+                label: 'Remove',
+                onClick: () => {
+                    updateQuantity(item.product_id, 0);
+                    toast.dismiss(toastId);
+                    toast.success(`${item.name} removed from order.`);
+                }
+            },
+            cancel: {
+                label: 'Keep',
+                onClick: () => {
+                    toast.dismiss(toastId);
+                }
+            }
+        });
+    }
+
     if (!selectedBranchId) {
         return (
             <EmptyState
@@ -629,7 +650,7 @@ export function MobilePage() {
                                                         <button
                                                             type="button"
                                                             className="btn btn-ghost btn-sm"
-                                                            onClick={() => updateQuantity(item.product_id, 0)}
+                                                            onClick={() => confirmRemoveFromCart(item)}
                                                         >
                                                             Remove
                                                         </button>

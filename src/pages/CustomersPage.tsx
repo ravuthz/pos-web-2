@@ -1,7 +1,8 @@
 import { useDeferredValue, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Trash2, X } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { CrudEditorLayout, CRUD_EDITOR_ACTIONS_CLASS, CRUD_EDITOR_FORM_GRID_CLASS } from '@/components/ui/CrudEditorLayout';
 import { CrudTabs } from '@/components/ui/CrudTabs';
 import { DataTable } from '@/components/ui/DataTable';
 import { ErrorState, LoadingState } from '@/components/ui/States';
@@ -94,6 +95,8 @@ export function CustomersPage() {
   const customersMeta = getPaginationMeta(customersQuery.data?.meta);
   const isCustomersInitialLoad = customersQuery.isLoading && !customersQuery.data;
   const activeEditorTab = crudTabs.activeEditorTab;
+  const inputClass = 'input input-bordered w-full';
+  const textareaClass = 'textarea textarea-bordered min-h-24 w-full';
   const tabItems = [
     { id: CRUD_MAIN_TAB_ID, type: 'main' as const, title: 'Customers' },
     ...crudTabs.tabs.map((tab) => ({
@@ -126,102 +129,86 @@ export function CustomersPage() {
         onCreateTab={crudTabs.openCreateTab}
       >
         {activeEditorTab ? (
-          <section className="card space-y-4">
-          <div className="card-header mb-0">
-            <div>
-              <h2 className="text-lg font-semibold text-surface-900">
-                {activeEditorTab.type === 'edit' ? 'Edit customer' : 'Create customer'}
-              </h2>
-              <p className="text-sm text-surface-500">
-                {activeEditorTab.type === 'edit'
-                  ? 'Update customer contact information.'
-                  : 'Create a new customer profile for POS and sales history.'}
-              </p>
-            </div>
-            <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          <form
-            className="grid gap-4 md:grid-cols-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              saveMutation.mutate(activeEditorTab);
-            }}
+          <CrudEditorLayout
+            title={activeEditorTab.type === 'edit' ? 'Edit customer' : 'Create customer'}
+            description={
+              activeEditorTab.type === 'edit'
+                ? 'Update customer contact information.'
+                : 'Create a new customer profile for POS and sales history.'
+            }
+            onClose={() => crudTabs.closeTab(activeEditorTab.id)}
           >
-            <div>
-              <label className="label" htmlFor="customer-name">
-                Name
-              </label>
-              <input
-                id="customer-name"
-                className="input"
-                value={activeEditorTab.form.name}
-                onChange={(event) =>
-                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, name: event.target.value }))
-                }
-                required
-              />
-            </div>
+            <form
+              className={CRUD_EDITOR_FORM_GRID_CLASS}
+              onSubmit={(event) => {
+                event.preventDefault();
+                saveMutation.mutate(activeEditorTab);
+              }}
+            >
+              <fieldset className="fieldset">
+                <legend className="fieldset-legend">Name</legend>
+                <input
+                  id="customer-name"
+                  className={inputClass}
+                  value={activeEditorTab.form.name}
+                  onChange={(event) =>
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, name: event.target.value }))
+                  }
+                  required
+                />
+              </fieldset>
 
-            <div>
-              <label className="label" htmlFor="customer-phone">
-                Phone
-              </label>
-              <input
-                id="customer-phone"
-                className="input"
-                value={activeEditorTab.form.phone}
-                onChange={(event) =>
-                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, phone: event.target.value }))
-                }
-              />
-            </div>
+              <fieldset className="fieldset">
+                <legend className="fieldset-legend">Phone</legend>
+                <input
+                  id="customer-phone"
+                  className={inputClass}
+                  value={activeEditorTab.form.phone}
+                  onChange={(event) =>
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, phone: event.target.value }))
+                  }
+                />
+              </fieldset>
 
-            <div>
-              <label className="label" htmlFor="customer-email">
-                Email
-              </label>
-              <input
-                id="customer-email"
-                type="email"
-                className="input"
-                value={activeEditorTab.form.email}
-                onChange={(event) =>
-                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, email: event.target.value }))
-                }
-              />
-            </div>
+              <fieldset className="fieldset">
+                <legend className="fieldset-legend">Email</legend>
+                <input
+                  id="customer-email"
+                  type="email"
+                  className={inputClass}
+                  value={activeEditorTab.form.email}
+                  onChange={(event) =>
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, email: event.target.value }))
+                  }
+                />
+              </fieldset>
 
-            <div className="md:col-span-2">
-              <label className="label" htmlFor="customer-address">
-                Address
-              </label>
-              <textarea
-                id="customer-address"
-                className="input min-h-28"
-                value={activeEditorTab.form.address}
-                onChange={(event) =>
-                  crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, address: event.target.value }))
-                }
-              />
-            </div>
+              <fieldset className="fieldset md:col-span-2 xl:col-span-3">
+                <legend className="fieldset-legend">Address</legend>
+                <textarea
+                  id="customer-address"
+                  className={textareaClass}
+                  value={activeEditorTab.form.address}
+                  onChange={(event) =>
+                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, address: event.target.value }))
+                  }
+                />
+              </fieldset>
 
-            <div className="md:col-span-2 flex flex-wrap gap-3">
-              <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
-                {saveMutation.isPending
-                  ? 'Saving...'
-                  : activeEditorTab.type === 'edit'
-                    ? 'Update customer'
-                    : 'Create customer'}
-              </button>
-              <button type="button" className="btn btn-secondary" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
-                Cancel
-              </button>
-            </div>
-          </form>
-        </section>
+              <div className={CRUD_EDITOR_ACTIONS_CLASS}>
+                <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
+                  {saveMutation.isPending
+                    ? 'Saving...'
+                    : activeEditorTab.type === 'edit'
+                      ? 'Update customer'
+                      : 'Create customer'}
+                </button>
+                <button type="button" className="btn btn-secondary" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </CrudEditorLayout>
         ) : (
           <div className="space-y-4">
         <input

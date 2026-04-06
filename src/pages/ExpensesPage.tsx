@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, DollarSign, Pencil, Trash2, X } from 'lucide-react';
+import { Check, DollarSign, Pencil, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { CrudEditorLayout, CRUD_EDITOR_ACTIONS_CLASS, CRUD_EDITOR_FORM_GRID_CLASS } from '@/components/ui/CrudEditorLayout';
 import { CrudTabs } from '@/components/ui/CrudTabs';
 import { DataTable } from '@/components/ui/DataTable';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -190,6 +191,9 @@ export function ExpensesPage() {
     this_month?: { total?: number; count?: number };
     pending?: { total?: number; count?: number };
   };
+  const inputClass = 'input input-bordered w-full';
+  const selectClass = 'select select-bordered w-full';
+  const textareaClass = 'textarea textarea-bordered min-h-24 w-full';
 
   return (
     <div className="space-y-6">
@@ -206,187 +210,163 @@ export function ExpensesPage() {
         onCreateTab={crudTabs.openCreateTab}
       >
         {activeEditorTab ? (
-          <section className="card space-y-4">
-          <div className="card-header mb-0">
-            <div>
-              <h2 className="text-lg font-semibold text-surface-900">
-                {activeEditorTab.type === 'edit' ? 'Edit expense' : 'Create expense'}
-              </h2>
-              <p className="text-sm text-surface-500">
-                {activeEditorTab.type === 'edit'
-                  ? 'Only pending expenses can be updated.'
-                  : 'Create a new expense for the selected branch.'}
-              </p>
-            </div>
-            <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
-              <X className="h-4 w-4" />
-            </button>
-          </div>
+          <CrudEditorLayout
+            title={activeEditorTab.type === 'edit' ? 'Edit expense' : 'Create expense'}
+            description={
+              activeEditorTab.type === 'edit'
+                ? 'Only pending expenses can be updated.'
+                : 'Create a new expense for the selected branch.'
+            }
+            onClose={() => crudTabs.closeTab(activeEditorTab.id)}
+          >
+            {!selectedBranchId ? (
+              <EmptyState
+                title="Branch required"
+                message="Pick a branch from the header before creating an expense."
+              />
+            ) : (
+              <form
+                className={CRUD_EDITOR_FORM_GRID_CLASS}
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  saveMutation.mutate(activeEditorTab);
+                }}
+              >
+                <fieldset className="fieldset">
+                  <legend className="fieldset-legend">Expense number</legend>
+                  <input
+                    id="expense-number"
+                    className={inputClass}
+                    value={activeEditorTab.form.expense_number}
+                    onChange={(event) =>
+                      crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, expense_number: event.target.value }))
+                    }
+                    required
+                  />
+                </fieldset>
 
-          {!selectedBranchId ? (
-            <EmptyState
-              title="Branch required"
-              message="Pick a branch from the header before creating an expense."
-            />
-          ) : (
-            <form
-              className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                saveMutation.mutate(activeEditorTab);
-              }}
-            >
-              <div>
-                <label className="label" htmlFor="expense-number">
-                  Expense number
-                </label>
-                <input
-                  id="expense-number"
-                  className="input"
-                  value={activeEditorTab.form.expense_number}
-                  onChange={(event) =>
-                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, expense_number: event.target.value }))
-                  }
-                  required
-                />
-              </div>
+                <fieldset className="fieldset">
+                  <legend className="fieldset-legend">Category</legend>
+                  <select
+                    id="expense-category"
+                    className={selectClass}
+                    value={activeEditorTab.form.category}
+                    onChange={(event) =>
+                      crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
+                        ...current,
+                        category: event.target.value as ExpenseFormState['category']
+                      }))
+                    }
+                  >
+                    {expenseCategories.map((category) => (
+                      <option key={category} value={category}>
+                        {category.replace(/_/g, ' ')}
+                      </option>
+                    ))}
+                  </select>
+                </fieldset>
 
-              <div>
-                <label className="label" htmlFor="expense-category">
-                  Category
-                </label>
-                <select
-                  id="expense-category"
-                  className="input"
-                  value={activeEditorTab.form.category}
-                  onChange={(event) =>
-                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
-                      ...current,
-                      category: event.target.value as ExpenseFormState['category']
-                    }))
-                  }
-                >
-                  {expenseCategories.map((category) => (
-                    <option key={category} value={category}>
-                      {category.replace(/_/g, ' ')}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                <fieldset className="fieldset">
+                  <legend className="fieldset-legend">Amount</legend>
+                  <input
+                    id="expense-amount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className={inputClass}
+                    value={activeEditorTab.form.amount}
+                    onChange={(event) =>
+                      crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, amount: event.target.value }))
+                    }
+                    required
+                  />
+                </fieldset>
 
-              <div>
-                <label className="label" htmlFor="expense-amount">
-                  Amount
-                </label>
-                <input
-                  id="expense-amount"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="input"
-                  value={activeEditorTab.form.amount}
-                  onChange={(event) =>
-                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, amount: event.target.value }))
-                  }
-                  required
-                />
-              </div>
+                <fieldset className="fieldset">
+                  <legend className="fieldset-legend">Expense date</legend>
+                  <input
+                    id="expense-date"
+                    type="date"
+                    className={inputClass}
+                    value={activeEditorTab.form.expense_date}
+                    onChange={(event) =>
+                      crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, expense_date: event.target.value }))
+                    }
+                    required
+                  />
+                </fieldset>
 
-              <div>
-                <label className="label" htmlFor="expense-date">
-                  Expense date
-                </label>
-                <input
-                  id="expense-date"
-                  type="date"
-                  className="input"
-                  value={activeEditorTab.form.expense_date}
-                  onChange={(event) =>
-                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, expense_date: event.target.value }))
-                  }
-                  required
-                />
-              </div>
+                <fieldset className="fieldset">
+                  <legend className="fieldset-legend">Payment method</legend>
+                  <select
+                    id="expense-payment-method"
+                    className={selectClass}
+                    value={activeEditorTab.form.payment_method}
+                    onChange={(event) =>
+                      crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
+                        ...current,
+                        payment_method: event.target.value as ExpenseFormState['payment_method']
+                      }))
+                    }
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="card">Card</option>
+                    <option value="transfer">Transfer</option>
+                    <option value="check">Check</option>
+                  </select>
+                </fieldset>
 
-              <div>
-                <label className="label" htmlFor="expense-payment-method">
-                  Payment method
-                </label>
-                <select
-                  id="expense-payment-method"
-                  className="input"
-                  value={activeEditorTab.form.payment_method}
-                  onChange={(event) =>
-                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
-                      ...current,
-                      payment_method: event.target.value as ExpenseFormState['payment_method']
-                    }))
-                  }
-                >
-                  <option value="cash">Cash</option>
-                  <option value="card">Card</option>
-                  <option value="transfer">Transfer</option>
-                  <option value="check">Check</option>
-                </select>
-              </div>
+                <fieldset className="fieldset">
+                  <legend className="fieldset-legend">Receipt number</legend>
+                  <input
+                    id="expense-receipt"
+                    className={inputClass}
+                    value={activeEditorTab.form.receipt_number}
+                    onChange={(event) =>
+                      crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, receipt_number: event.target.value }))
+                    }
+                  />
+                </fieldset>
 
-              <div>
-                <label className="label" htmlFor="expense-receipt">
-                  Receipt number
-                </label>
-                <input
-                  id="expense-receipt"
-                  className="input"
-                  value={activeEditorTab.form.receipt_number}
-                  onChange={(event) =>
-                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, receipt_number: event.target.value }))
-                  }
-                />
-              </div>
+                <fieldset className="fieldset md:col-span-2 xl:col-span-3">
+                  <legend className="fieldset-legend">Description</legend>
+                  <textarea
+                    id="expense-description"
+                    className={textareaClass}
+                    value={activeEditorTab.form.description}
+                    onChange={(event) =>
+                      crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, description: event.target.value }))
+                    }
+                  />
+                </fieldset>
 
-              <div className="md:col-span-2 xl:col-span-3">
-                <label className="label" htmlFor="expense-description">
-                  Description
-                </label>
-                <textarea
-                  id="expense-description"
-                  className="input min-h-24"
-                  value={activeEditorTab.form.description}
-                  onChange={(event) =>
-                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, description: event.target.value }))
-                  }
-                />
-              </div>
+                <fieldset className="fieldset md:col-span-2 xl:col-span-3">
+                  <legend className="fieldset-legend">Notes</legend>
+                  <textarea
+                    id="expense-notes"
+                    className={textareaClass}
+                    value={activeEditorTab.form.notes}
+                    onChange={(event) =>
+                      crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, notes: event.target.value }))
+                    }
+                  />
+                </fieldset>
 
-              <div className="md:col-span-2 xl:col-span-3">
-                <label className="label" htmlFor="expense-notes">
-                  Notes
-                </label>
-                <textarea
-                  id="expense-notes"
-                  className="input min-h-28"
-                  value={activeEditorTab.form.notes}
-                  onChange={(event) =>
-                    crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, notes: event.target.value }))
-                  }
-                />
-              </div>
-
-              <div className="md:col-span-2 xl:col-span-3 flex flex-wrap gap-3">
-                <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
-                  {saveMutation.isPending
-                    ? 'Saving...'
-                    : activeEditorTab.type === 'edit'
-                      ? 'Update expense'
-                      : 'Create expense'}
-                </button>
-                <button type="button" className="btn btn-secondary" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
-                  Cancel
-                </button>
-              </div>
-            </form>
-          )}
-        </section>
+                <div className={CRUD_EDITOR_ACTIONS_CLASS}>
+                  <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
+                    {saveMutation.isPending
+                      ? 'Saving...'
+                      : activeEditorTab.type === 'edit'
+                        ? 'Update expense'
+                        : 'Create expense'}
+                  </button>
+                  <button type="button" className="btn btn-secondary" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            )}
+          </CrudEditorLayout>
         ) : (
           <div className="space-y-4">
             <div className="grid gap-4 md:grid-cols-3">

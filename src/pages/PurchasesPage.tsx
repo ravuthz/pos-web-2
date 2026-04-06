@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
-import { Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { CrudEditorLayout, CRUD_EDITOR_ACTIONS_CLASS, CRUD_EDITOR_FORM_GRID_CLASS } from '@/components/ui/CrudEditorLayout';
 import { CrudTabs } from '@/components/ui/CrudTabs';
 import { DataTable } from '@/components/ui/DataTable';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
@@ -238,6 +239,9 @@ export function PurchasesPage() {
   );
   const activeEditorTab = crudTabs.activeEditorTab;
   const isReceiveTab = activeEditorTab?.type === 'edit' && activeEditorTab.form.mode === 'receive';
+  const inputClass = 'input input-bordered w-full';
+  const selectClass = 'select select-bordered w-full';
+  const textareaClass = 'textarea textarea-bordered min-h-24 w-full';
   const tabItems = [
     { id: CRUD_MAIN_TAB_ID, type: 'main' as const, title: 'Purchases' },
     ...crudTabs.tabs.map((tab) => ({ id: tab.id, type: tab.type, title: tab.title }))
@@ -258,33 +262,23 @@ export function PurchasesPage() {
         onCreateTab={crudTabs.openCreateTab}
       >
         {activeEditorTab ? (
-          <section className="card space-y-4">
-            <div className="card-header mb-0">
-              <div>
-                <h2 className="text-lg font-semibold text-surface-900">
-                  {activeEditorTab.type === 'create'
-                    ? 'Create purchase order'
-                    : isReceiveTab
-                      ? 'Receive purchase order'
-                      : 'Edit purchase order'}
-                </h2>
-                <p className="text-sm text-surface-500">
-                  {activeEditorTab.type === 'create'
-                    ? 'Add vendor, schedule, and product lines for a new PO.'
-                    : isReceiveTab
-                      ? 'Enter the quantity received for each purchase line.'
-                      : 'Update vendor, schedule, notes, and product lines for this draft PO.'}
-                </p>
-              </div>
-              <button
-                type="button"
-                className="btn btn-ghost btn-sm btn-square"
-                onClick={() => crudTabs.closeTab(activeEditorTab.id)}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
+          <CrudEditorLayout
+            title={
+              activeEditorTab.type === 'create'
+                ? 'Create purchase order'
+                : isReceiveTab
+                  ? 'Receive purchase order'
+                  : 'Edit purchase order'
+            }
+            description={
+              activeEditorTab.type === 'create'
+                ? 'Add vendor, schedule, and product lines for a new PO.'
+                : isReceiveTab
+                  ? 'Enter the quantity received for each purchase line.'
+                  : 'Update vendor, schedule, notes, and product lines for this draft PO.'
+            }
+            onClose={() => crudTabs.closeTab(activeEditorTab.id)}
+          >
             {activeEditorTab.type === 'create' && !selectedBranchId ? (
               <EmptyState
                 title="Branch required"
@@ -322,7 +316,7 @@ export function PurchasesPage() {
                       type="number"
                       min="0"
                       step="0.01"
-                      className="input"
+                      className={inputClass}
                       value={item.quantity_received ?? '0'}
                       onChange={(event) =>
                         updateProductLine(activeEditorTab.id, index, (current) => ({
@@ -349,181 +343,173 @@ export function PurchasesPage() {
               </form>
             ) : (
               <form
-                className="space-y-4"
+                className={CRUD_EDITOR_FORM_GRID_CLASS}
                 onSubmit={(event) => {
                   event.preventDefault();
                   saveMutation.mutate(activeEditorTab);
                 }}
               >
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div>
-                    <label className="label" htmlFor="purchase-vendor">
-                      Vendor
-                    </label>
-                    <select
-                      id="purchase-vendor"
-                      className="input"
-                      value={activeEditorTab.form.vendor_id}
-                      onChange={(event) =>
-                        crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
-                          ...current,
-                          vendor_id: event.target.value
-                        }))
-                      }
-                      required
-                    >
-                      <option value="">Select vendor</option>
-                      {vendors.map((vendor) => (
-                        <option key={vendor.id} value={vendor.id}>
-                          {vendor.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                <fieldset className="fieldset">
+                  <legend className="fieldset-legend">Vendor</legend>
+                  <select
+                    id="purchase-vendor"
+                    className={selectClass}
+                    value={activeEditorTab.form.vendor_id}
+                    onChange={(event) =>
+                      crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
+                        ...current,
+                        vendor_id: event.target.value
+                      }))
+                    }
+                    required
+                  >
+                    <option value="">Select vendor</option>
+                    {vendors.map((vendor) => (
+                      <option key={vendor.id} value={vendor.id}>
+                        {vendor.name}
+                      </option>
+                    ))}
+                  </select>
+                </fieldset>
 
-                  <div>
-                    <label className="label" htmlFor="purchase-order-date">
-                      Order date
-                    </label>
-                    <input
-                      id="purchase-order-date"
-                      type="date"
-                      className="input"
-                      value={activeEditorTab.form.order_date}
-                      onChange={(event) =>
-                        crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
-                          ...current,
-                          order_date: event.target.value
-                        }))
-                      }
-                      required
-                    />
-                  </div>
+                <fieldset className="fieldset">
+                  <legend className="fieldset-legend">Order date</legend>
+                  <input
+                    id="purchase-order-date"
+                    type="date"
+                    className={inputClass}
+                    value={activeEditorTab.form.order_date}
+                    onChange={(event) =>
+                      crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
+                        ...current,
+                        order_date: event.target.value
+                      }))
+                    }
+                    required
+                  />
+                </fieldset>
 
-                  <div>
-                    <label className="label" htmlFor="purchase-expected-date">
-                      Expected date
-                    </label>
-                    <input
-                      id="purchase-expected-date"
-                      type="date"
-                      className="input"
-                      value={activeEditorTab.form.expected_date}
-                      onChange={(event) =>
-                        crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
-                          ...current,
-                          expected_date: event.target.value
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
+                <fieldset className="fieldset">
+                  <legend className="fieldset-legend">Expected date</legend>
+                  <input
+                    id="purchase-expected-date"
+                    type="date"
+                    className={inputClass}
+                    value={activeEditorTab.form.expected_date}
+                    onChange={(event) =>
+                      crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
+                        ...current,
+                        expected_date: event.target.value
+                      }))
+                    }
+                  />
+                </fieldset>
 
-                <div className="card space-y-3 border border-base-300 bg-base-100 p-4 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium text-surface-900">Products</p>
-                      <p className="text-sm text-surface-500">At least one product line is required.</p>
-                    </div>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={() =>
-                        crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
-                          ...current,
-                          products: [...current.products, { ...emptyItem }]
-                        }))
-                      }
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add line
-                    </button>
-                  </div>
-
-                  {activeEditorTab.form.products.map((item, index) => (
-                    <div
-                      key={`${index}-${item.product_id}`}
-                      className="grid gap-3 md:grid-cols-[1fr_140px_140px_auto]"
-                    >
-                      <select
-                        className="input"
-                        value={item.product_id}
-                        onChange={(event) =>
-                          updateProductLine(activeEditorTab.id, index, (current) => ({
-                            ...current,
-                            product_id: event.target.value
-                          }))
-                        }
-                        required
-                      >
-                        <option value="">Select product</option>
-                        {products.map((product) => (
-                          <option key={product.id} value={product.id}>
-                            {product.name} ({product.code ?? product.barcode ?? 'No code'})
-                          </option>
-                        ))}
-                      </select>
-
-                      <input
-                        type="number"
-                        min="0.01"
-                        step="0.01"
-                        className="input"
-                        placeholder="Qty"
-                        value={item.quantity_ordered}
-                        onChange={(event) =>
-                          updateProductLine(activeEditorTab.id, index, (current) => ({
-                            ...current,
-                            quantity_ordered: event.target.value
-                          }))
-                        }
-                        required
-                      />
-
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        className="input"
-                        placeholder="Unit cost"
-                        value={item.unit_cost}
-                        onChange={(event) =>
-                          updateProductLine(activeEditorTab.id, index, (current) => ({
-                            ...current,
-                            unit_cost: event.target.value
-                          }))
-                        }
-                        required
-                      />
-
+                <div className="card border border-base-300 bg-base-100 shadow-sm md:col-span-2 xl:col-span-3">
+                  <div className="card-body gap-4 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-surface-900">Products</p>
+                        <p className="text-sm text-surface-500">At least one product line is required.</p>
+                      </div>
                       <button
                         type="button"
-                        className="btn btn-error btn-sm btn-square"
-                        title="Delete line"
+                        className="btn btn-secondary"
                         onClick={() =>
                           crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
                             ...current,
-                            products:
-                              current.products.length === 1
-                                ? current.products
-                                : current.products.filter((_, productIndex) => productIndex !== index)
+                            products: [...current.products, { ...emptyItem }]
                           }))
                         }
-                        disabled={activeEditorTab.form.products.length === 1}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Plus className="h-4 w-4" />
+                        Add line
                       </button>
                     </div>
-                  ))}
+
+                    {activeEditorTab.form.products.map((item, index) => (
+                      <div
+                        key={`${index}-${item.product_id}`}
+                        className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_140px_140px_auto]"
+                      >
+                        <select
+                          className={selectClass}
+                          value={item.product_id}
+                          onChange={(event) =>
+                            updateProductLine(activeEditorTab.id, index, (current) => ({
+                              ...current,
+                              product_id: event.target.value
+                            }))
+                          }
+                          required
+                        >
+                          <option value="">Select product</option>
+                          {products.map((product) => (
+                            <option key={product.id} value={product.id}>
+                              {product.name} ({product.code ?? product.barcode ?? 'No code'})
+                            </option>
+                          ))}
+                        </select>
+
+                        <input
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          className={inputClass}
+                          placeholder="Qty"
+                          value={item.quantity_ordered}
+                          onChange={(event) =>
+                            updateProductLine(activeEditorTab.id, index, (current) => ({
+                              ...current,
+                              quantity_ordered: event.target.value
+                            }))
+                          }
+                          required
+                        />
+
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          className={inputClass}
+                          placeholder="Unit cost"
+                          value={item.unit_cost}
+                          onChange={(event) =>
+                            updateProductLine(activeEditorTab.id, index, (current) => ({
+                              ...current,
+                              unit_cost: event.target.value
+                            }))
+                          }
+                          required
+                        />
+
+                        <button
+                          type="button"
+                          className="btn btn-error btn-sm btn-square self-start xl:self-center"
+                          title="Delete line"
+                          onClick={() =>
+                            crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
+                              ...current,
+                              products:
+                                current.products.length === 1
+                                  ? current.products
+                                  : current.products.filter((_, productIndex) => productIndex !== index)
+                            }))
+                          }
+                          disabled={activeEditorTab.form.products.length === 1}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                <div>
-                  <label className="label" htmlFor="purchase-notes">
-                    Notes
-                  </label>
+                <fieldset className="fieldset md:col-span-2 xl:col-span-3">
+                  <legend className="fieldset-legend">Notes</legend>
                   <textarea
                     id="purchase-notes"
-                    className="input min-h-24"
+                    className={textareaClass}
                     value={activeEditorTab.form.notes}
                     onChange={(event) =>
                       crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
@@ -532,9 +518,9 @@ export function PurchasesPage() {
                       }))
                     }
                   />
-                </div>
+                </fieldset>
 
-                <div className="flex flex-wrap gap-3">
+                <div className={CRUD_EDITOR_ACTIONS_CLASS}>
                   <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
                     {saveMutation.isPending
                       ? activeEditorTab.type === 'create'
@@ -554,7 +540,7 @@ export function PurchasesPage() {
                 </div>
               </form>
             )}
-          </section>
+          </CrudEditorLayout>
         ) : (
           <div className="app-table-shell">
             <DataTable

@@ -1,7 +1,8 @@
 import { useDeferredValue, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Pencil, Trash2, X } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { CrudEditorLayout, CRUD_EDITOR_ACTIONS_CLASS, CRUD_EDITOR_FORM_GRID_CLASS } from '@/components/ui/CrudEditorLayout';
 import { CrudTabs } from '@/components/ui/CrudTabs';
 import { DataTable } from '@/components/ui/DataTable';
 import { ErrorState, LoadingState } from '@/components/ui/States';
@@ -146,6 +147,9 @@ export function UsersPage() {
   const isUserReferencesInitialLoad =
     (rolesQuery.isLoading && !rolesQuery.data) || (branchesQuery.isLoading && !branchesQuery.data);
   const activeEditorTab = crudTabs.activeEditorTab;
+  const inputClass = 'input input-bordered w-full';
+  const selectClass = 'select select-bordered w-full';
+  const textareaClass = 'textarea textarea-bordered min-h-24 w-full';
   const tabItems = [
     { id: CRUD_MAIN_TAB_ID, type: 'main' as const, title: 'Users' },
     ...crudTabs.tabs.map((tab) => ({ id: tab.id, type: tab.type, title: tab.title }))
@@ -203,83 +207,67 @@ export function UsersPage() {
         onCreateTab={crudTabs.openCreateTab}
       >
         {activeEditorTab ? (
-          <section className="card space-y-4">
-            <div className="card-header mb-0">
-              <div>
-                <h2 className="text-lg font-semibold text-surface-900">
-                  {activeEditorTab.type === 'edit' ? 'Edit user' : 'Create user'}
-                </h2>
-                <p className="text-sm text-surface-500">
-                  {activeEditorTab.type === 'edit'
-                    ? 'Update user role, branch access, and profile details.'
-                    : 'Create a new team member account.'}
-                </p>
-              </div>
-              <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => crudTabs.closeTab(activeEditorTab.id)}>
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
+          <CrudEditorLayout
+            title={activeEditorTab.type === 'edit' ? 'Edit user' : 'Create user'}
+            description={
+              activeEditorTab.type === 'edit'
+                ? 'Update user role, branch access, and profile details.'
+                : 'Create a new team member account.'
+            }
+            onClose={() => crudTabs.closeTab(activeEditorTab.id)}
+          >
             <form
-              className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+              className={CRUD_EDITOR_FORM_GRID_CLASS}
               onSubmit={(event) => {
                 event.preventDefault();
                 saveMutation.mutate(activeEditorTab);
               }}
             >
-              <div>
-                <label className="label" htmlFor="user-name">
-                  Name
-                </label>
+              <fieldset className="fieldset">
+                <legend className="fieldset-legend">Name</legend>
                 <input
                   id="user-name"
-                  className="input"
+                  className={inputClass}
                   value={activeEditorTab.form.name}
                   onChange={(event) =>
                     crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, name: event.target.value }))
                   }
                   required
                 />
-              </div>
+              </fieldset>
 
-              <div>
-                <label className="label" htmlFor="user-username">
-                  Username
-                </label>
+              <fieldset className="fieldset">
+                <legend className="fieldset-legend">Username</legend>
                 <input
                   id="user-username"
-                  className="input"
+                  className={inputClass}
                   value={activeEditorTab.form.username}
                   onChange={(event) =>
                     crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, username: event.target.value }))
                   }
                   required
                 />
-              </div>
+              </fieldset>
 
-              <div>
-                <label className="label" htmlFor="user-email">
-                  Email
-                </label>
+              <fieldset className="fieldset">
+                <legend className="fieldset-legend">Email</legend>
                 <input
                   id="user-email"
                   type="email"
-                  className="input"
+                  className={inputClass}
                   value={activeEditorTab.form.email}
                   onChange={(event) =>
                     crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, email: event.target.value }))
                   }
                   required
                 />
-              </div>
+              </fieldset>
 
-              <div>
-                <label className="label" htmlFor="user-role">
-                  Role
-                </label>
+              <fieldset className="fieldset">
+                <legend className="fieldset-legend">Role</legend>
                 <select
                   id="user-role"
-                  className="input"
+                  className={selectClass}
                   value={activeEditorTab.form.role_id}
                   onChange={(event) =>
                     crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, role_id: event.target.value }))
@@ -293,15 +281,13 @@ export function UsersPage() {
                     </option>
                   ))}
                 </select>
-              </div>
+              </fieldset>
 
-              <div>
-                <label className="label" htmlFor="user-status">
-                  Status
-                </label>
+              <fieldset className="fieldset">
+                <legend className="fieldset-legend">Status</legend>
                 <select
                   id="user-status"
-                  className="input"
+                  className={selectClass}
                   value={activeEditorTab.form.status}
                   onChange={(event) =>
                     crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
@@ -313,15 +299,13 @@ export function UsersPage() {
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
-              </div>
+              </fieldset>
 
-              <div>
-                <label className="label" htmlFor="user-primary-branch">
-                  Primary branch
-                </label>
+              <fieldset className="fieldset">
+                <legend className="fieldset-legend">Primary branch</legend>
                 <select
                   id="user-primary-branch"
-                  className="input"
+                  className={selectClass}
                   value={activeEditorTab.form.branch_id}
                   onChange={(event) =>
                     crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, branch_id: event.target.value }))
@@ -336,44 +320,38 @@ export function UsersPage() {
                       </option>
                     ))}
                 </select>
-              </div>
+              </fieldset>
 
-              <div>
-                <label className="label" htmlFor="user-phone">
-                  Phone
-                </label>
+              <fieldset className="fieldset">
+                <legend className="fieldset-legend">Phone</legend>
                 <input
                   id="user-phone"
-                  className="input"
+                  className={inputClass}
                   value={activeEditorTab.form.phone}
                   onChange={(event) =>
                     crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, phone: event.target.value }))
                   }
                 />
-              </div>
+              </fieldset>
 
-              <div className="md:col-span-2">
-                <label className="label" htmlFor="user-address">
-                  Address
-                </label>
+              <fieldset className="fieldset md:col-span-2 xl:col-span-3">
+                <legend className="fieldset-legend">Address</legend>
                 <textarea
                   id="user-address"
-                  className="input min-h-24"
+                  className={textareaClass}
                   value={activeEditorTab.form.address}
                   onChange={(event) =>
                     crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, address: event.target.value }))
                   }
                 />
-              </div>
+              </fieldset>
 
-              <div>
-                <label className="label" htmlFor="user-password">
-                  Password
-                </label>
+              <fieldset className="fieldset">
+                <legend className="fieldset-legend">Password</legend>
                 <input
                   id="user-password"
                   type="password"
-                  className="input"
+                  className={inputClass}
                   value={activeEditorTab.form.password}
                   onChange={(event) =>
                     crudTabs.updateTabForm(activeEditorTab.id, (current) => ({ ...current, password: event.target.value }))
@@ -381,16 +359,14 @@ export function UsersPage() {
                   placeholder={activeEditorTab.type === 'edit' ? 'Leave blank to keep current password' : ''}
                   required={activeEditorTab.type === 'create'}
                 />
-              </div>
+              </fieldset>
 
-              <div>
-                <label className="label" htmlFor="user-password-confirmation">
-                  Confirm password
-                </label>
+              <fieldset className="fieldset">
+                <legend className="fieldset-legend">Confirm password</legend>
                 <input
                   id="user-password-confirmation"
                   type="password"
-                  className="input"
+                  className={inputClass}
                   value={activeEditorTab.form.password_confirmation}
                   onChange={(event) =>
                     crudTabs.updateTabForm(activeEditorTab.id, (current) => ({
@@ -400,16 +376,13 @@ export function UsersPage() {
                   }
                   required={activeEditorTab.type === 'create' || Boolean(activeEditorTab.form.password)}
                 />
-              </div>
+              </fieldset>
 
-              <div className="md:col-span-2 xl:col-span-3">
-                <label className="label">Branch access</label>
+              <fieldset className="fieldset md:col-span-2 xl:col-span-3">
+                <legend className="fieldset-legend">Branch access</legend>
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {branches.map((branch) => (
-                    <label
-                      key={branch.id}
-                      className="app-soft-panel flex items-center gap-3 px-4 py-3 text-sm text-surface-700"
-                    >
+                    <label key={branch.id} className="app-soft-panel flex items-center gap-3 px-4 py-3 text-sm text-surface-700">
                       <input
                         type="checkbox"
                         checked={activeEditorTab.form.branch_ids.includes(branch.id)}
@@ -419,9 +392,9 @@ export function UsersPage() {
                     </label>
                   ))}
                 </div>
-              </div>
+              </fieldset>
 
-              <div className="md:col-span-2 xl:col-span-3 flex flex-wrap gap-3">
+              <div className={CRUD_EDITOR_ACTIONS_CLASS}>
                 <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
                   {saveMutation.isPending
                     ? 'Saving...'
@@ -434,7 +407,7 @@ export function UsersPage() {
                 </button>
               </div>
             </form>
-          </section>
+          </CrudEditorLayout>
         ) : (
           <div className="space-y-4">
             <input
