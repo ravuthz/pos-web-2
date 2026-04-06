@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, X } from 'lucide-react';
+import { BadgeDollarSign, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { CrudEditorLayout, CRUD_EDITOR_ACTIONS_CLASS, CRUD_EDITOR_FORM_GRID_CLASS } from '@/components/ui/CrudEditorLayout';
 import { DataTable } from '@/components/ui/DataTable';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { StatCard } from '@/components/ui/StatCard';
@@ -47,6 +48,8 @@ export function ShiftsPage() {
   const [isCloseEditorVisible, setIsCloseEditorVisible] = useState(false);
   const [openForm, setOpenForm] = useState<OpenShiftFormState>(emptyOpenForm);
   const [closeForm, setCloseForm] = useState<CloseShiftFormState>(emptyCloseForm);
+  const inputClass = 'input input-bordered w-full';
+  const textareaClass = 'textarea textarea-bordered min-h-24 w-full';
 
   const shiftsQuery = useQuery({
     queryKey: ['shifts', selectedBranchId, page, pageSize],
@@ -154,12 +157,23 @@ export function ShiftsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Shifts"
+        title={
+          <div className="flex flex-wrap items-center gap-2 py-1">
+            <span>Shifts</span>
+            {currentShift ? (
+              <>
+                <StatusBadge value={currentShift.status} />
+                <span className="badge badge-neutral px-3">{currentShift.shift_number}</span>
+              </>
+            ) : (
+              <span className="badge badge-outline px-3">No active shift</span>
+            )}
+          </div>
+        }
         subtitle="Open and close cashier shifts with actual cash reconciliation."
         actions={
           currentShift ? (
             <>
-              <StatusBadge value={currentShift.status} />
               <button
                 type="button"
                 className="btn btn-primary"
@@ -189,19 +203,11 @@ export function ShiftsPage() {
       />
 
       {isOpenEditorVisible ? (
-        <section className="card space-y-4">
-          <div className="card-header mb-0">
-            <div>
-              <h2 className="text-lg font-semibold text-surface-900">Open shift</h2>
-              <p className="text-sm text-surface-500">
-                Record opening floats before the cashier starts transactions.
-              </p>
-            </div>
-            <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => setIsOpenEditorVisible(false)}>
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
+        <CrudEditorLayout
+          title="Open shift"
+          description="Record opening floats before the cashier starts transactions."
+          onClose={() => setIsOpenEditorVisible(false)}
+        >
           {!selectedBranchId ? (
             <EmptyState
               title="Branch required"
@@ -209,61 +215,69 @@ export function ShiftsPage() {
             />
           ) : (
             <form
-              className="grid gap-4 md:grid-cols-2"
+              className={CRUD_EDITOR_FORM_GRID_CLASS}
               onSubmit={(event) => {
                 event.preventDefault();
                 openShiftMutation.mutate(openForm);
               }}
             >
-              <div>
-                <label className="label" htmlFor="opening-cash-usd">
-                  Opening cash (USD)
-                </label>
+              <div className="card border border-base-300 bg-base-200/50 md:col-span-2 xl:col-span-3">
+                <div className="card-body flex-row items-start gap-3 p-4">
+                  <div className="rounded-box border border-base-300 bg-base-100 p-2">
+                    <BadgeDollarSign className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-base-content">Opening float</p>
+                    <p className="text-sm text-base-content/65">
+                      Set the drawer starting balance in both currencies before sales begin.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <fieldset className="fieldset">
+                <legend className="fieldset-legend">Opening cash (USD)</legend>
                 <input
                   id="opening-cash-usd"
                   type="number"
                   min="0"
                   step="0.01"
-                  className="input"
+                  className={inputClass}
                   value={openForm.opening_cash_float}
                   onChange={(event) =>
                     setOpenForm((current) => ({ ...current, opening_cash_float: event.target.value }))
                   }
                 />
-              </div>
+              </fieldset>
 
-              <div>
-                <label className="label" htmlFor="opening-cash-khr">
-                  Opening cash (KHR)
-                </label>
+              <fieldset className="fieldset">
+                <legend className="fieldset-legend">Opening cash (KHR)</legend>
                 <input
                   id="opening-cash-khr"
                   type="number"
                   min="0"
                   step="0.01"
-                  className="input"
+                  className={inputClass}
                   value={openForm.opening_cash_float_khr}
                   onChange={(event) =>
                     setOpenForm((current) => ({ ...current, opening_cash_float_khr: event.target.value }))
                   }
                 />
-              </div>
+              </fieldset>
 
-              <div className="md:col-span-2">
-                <label className="label" htmlFor="opening-notes">
-                  Opening notes
-                </label>
+              <fieldset className="fieldset md:col-span-2 xl:col-span-3">
+                <legend className="fieldset-legend">Opening notes</legend>
                 <textarea
                   id="opening-notes"
-                  className="input min-h-24"
+                  className={textareaClass}
                   value={openForm.opening_notes}
                   onChange={(event) =>
                     setOpenForm((current) => ({ ...current, opening_notes: event.target.value }))
                   }
                 />
-              </div>
+              </fieldset>
 
-              <div className="md:col-span-2 flex flex-wrap gap-3">
+              <div className={CRUD_EDITOR_ACTIONS_CLASS}>
                 <button type="submit" className="btn btn-primary" disabled={openShiftMutation.isPending}>
                   {openShiftMutation.isPending ? 'Opening...' : 'Open shift'}
                 </button>
@@ -273,23 +287,15 @@ export function ShiftsPage() {
               </div>
             </form>
           )}
-        </section>
+        </CrudEditorLayout>
       ) : null}
 
       {isCloseEditorVisible && currentShift ? (
-        <section className="card space-y-4">
-          <div className="card-header mb-0">
-            <div>
-              <h2 className="text-lg font-semibold text-surface-900">Close shift</h2>
-              <p className="text-sm text-surface-500">
-                Reconcile expected cash against actual drawer counts.
-              </p>
-            </div>
-            <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={() => setIsCloseEditorVisible(false)}>
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
+        <CrudEditorLayout
+          title="Close shift"
+          description="Reconcile expected cash against actual drawer counts."
+          onClose={() => setIsCloseEditorVisible(false)}
+        >
           <div className="grid gap-4 md:grid-cols-3">
             <StatCard label="Expected USD" value={formatCurrency(currentShift.expected_cash ?? 0)} />
             <StatCard label="Expected KHR" value={formatNumber(currentShift.expected_cash_khr ?? 0)} />
@@ -297,61 +303,64 @@ export function ShiftsPage() {
           </div>
 
           <form
-            className="grid gap-4 md:grid-cols-2"
+            className={CRUD_EDITOR_FORM_GRID_CLASS}
             onSubmit={(event) => {
               event.preventDefault();
               closeShiftMutation.mutate(closeForm);
             }}
           >
-            <div>
-              <label className="label" htmlFor="actual-cash-usd">
-                Actual cash (USD)
-              </label>
+            <div className="card border border-base-300 bg-base-200/50 md:col-span-2 xl:col-span-3">
+              <div className="card-body gap-2 p-4">
+                <p className="font-medium text-base-content">Reconciliation guide</p>
+                <p className="text-sm text-base-content/65">
+                  Compare the expected drawer totals above with the counted cash below before closing this shift.
+                </p>
+              </div>
+            </div>
+
+            <fieldset className="fieldset">
+              <legend className="fieldset-legend">Actual cash (USD)</legend>
               <input
                 id="actual-cash-usd"
                 type="number"
                 min="0"
                 step="0.01"
-                className="input"
+                className={inputClass}
                 value={closeForm.actual_cash}
                 onChange={(event) =>
                   setCloseForm((current) => ({ ...current, actual_cash: event.target.value }))
                 }
               />
-            </div>
+            </fieldset>
 
-            <div>
-              <label className="label" htmlFor="actual-cash-khr">
-                Actual cash (KHR)
-              </label>
+            <fieldset className="fieldset">
+              <legend className="fieldset-legend">Actual cash (KHR)</legend>
               <input
                 id="actual-cash-khr"
                 type="number"
                 min="0"
                 step="0.01"
-                className="input"
+                className={inputClass}
                 value={closeForm.actual_cash_khr}
                 onChange={(event) =>
                   setCloseForm((current) => ({ ...current, actual_cash_khr: event.target.value }))
                 }
               />
-            </div>
+            </fieldset>
 
-            <div className="md:col-span-2">
-              <label className="label" htmlFor="closing-notes">
-                Closing notes
-              </label>
+            <fieldset className="fieldset md:col-span-2 xl:col-span-3">
+              <legend className="fieldset-legend">Closing notes</legend>
               <textarea
                 id="closing-notes"
-                className="input min-h-24"
+                className={textareaClass}
                 value={closeForm.closing_notes}
                 onChange={(event) =>
                   setCloseForm((current) => ({ ...current, closing_notes: event.target.value }))
                 }
               />
-            </div>
+            </fieldset>
 
-            <div className="md:col-span-2 flex flex-wrap gap-3">
+            <div className={CRUD_EDITOR_ACTIONS_CLASS}>
               <button type="submit" className="btn btn-primary" disabled={closeShiftMutation.isPending}>
                 {closeShiftMutation.isPending ? 'Closing...' : 'Close shift'}
               </button>
@@ -360,7 +369,7 @@ export function ShiftsPage() {
               </button>
             </div>
           </form>
-        </section>
+        </CrudEditorLayout>
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-4">
