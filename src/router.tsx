@@ -9,7 +9,6 @@ import { isAuthenticated } from '@/store/auth';
 import { Layout } from '@/components/layout/Layout';
 import { LoginPage } from '@/pages/LoginPage';
 import { DashboardPage } from '@/pages/DashboardPage';
-import { PosPage } from '@/pages/PosPage';
 import { ProductsPage } from '@/pages/ProductsPage';
 import { SalesPage } from '@/pages/SalesPage';
 import { CategoriesPage } from '@/pages/CategoriesPage';
@@ -70,12 +69,6 @@ const indexRoute = createRoute({
 const posRoute = createRoute({
   getParentRoute: () => protectedRoute,
   path: '/pos',
-  component: PosPage
-});
-
-const mobileRoute = createRoute({
-  getParentRoute: () => protectedRoute,
-  path: '/mobile',
   component: MobilePage
 });
 
@@ -150,7 +143,6 @@ const routeTree = rootRoute.addChildren([
   protectedRoute.addChildren([
     indexRoute,
     posRoute,
-    mobileRoute,
     productsRoute,
     salesRoute,
     categoriesRoute,
