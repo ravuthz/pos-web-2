@@ -12,6 +12,7 @@ import {
     Menu,
     Package,
     Palette,
+    Rows3,
     Receipt,
     ScanLine,
     ShoppingBag,
@@ -108,6 +109,7 @@ const shellBackgroundStyle = {
     backgroundImage:
         'radial-gradient(circle at top left, color-mix(in oklch, var(--color-primary) 18%, transparent), transparent 35%), linear-gradient(180deg, var(--color-base-200), var(--color-base-100))'
 };
+const compactModeStorageKey = 'pos-web2-compact-mode';
 
 function getInitialExpandedGroups(pathname: string) {
     return {
@@ -130,6 +132,13 @@ export function Layout() {
     );
     const [headerAccentIndex, setHeaderAccentIndex] = useState(0);
     const [selectedTheme, setSelectedTheme] = useState<AppTheme>(() => getStoredTheme());
+    const [isCompactMode, setIsCompactMode] = useState(() => {
+        if (typeof window === 'undefined') {
+            return false;
+        }
+
+        return window.localStorage.getItem(compactModeStorageKey) === '1';
+    });
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const headerSubtitle = [user?.role?.name, user?.username].filter(Boolean).join(' - ') || 'Point of sale workspace';
 
@@ -165,6 +174,11 @@ export function Layout() {
     useEffect(() => {
         applyTheme(selectedTheme);
     }, [selectedTheme]);
+
+    useEffect(() => {
+        document.documentElement.classList.toggle('app-compact', isCompactMode);
+        window.localStorage.setItem(compactModeStorageKey, isCompactMode ? '1' : '0');
+    }, [isCompactMode]);
 
     useEffect(() => {
         setExpandedGroups((current) => {
@@ -235,6 +249,15 @@ export function Layout() {
                                     </div>
 
                                     <div className="navbar-end hidden md:flex md:w-auto md:flex-row md:flex-wrap md:items-center md:justify-end md:gap-2">
+                                        <button
+                                            type="button"
+                                            className={`btn min-h-11 gap-2 rounded-box ${isCompactMode ? 'btn-primary' : 'btn-ghost border border-base-300'}`}
+                                            onClick={() => setIsCompactMode((current) => !current)}
+                                            title="Toggle compact style"
+                                        >
+                                            <Rows3 className="h-4 w-4 shrink-0" />
+                                            <span>Compact</span>
+                                        </button>
                                         <label className="flex items-center gap-2 text-sm text-surface-600">
                                             <Palette className="h-4 w-4 shrink-0" />
                                             <select
@@ -353,6 +376,15 @@ export function Layout() {
                                 </div>
 
                                 <div className="space-y-3 md:hidden">
+                                    <button
+                                        type="button"
+                                        className={`btn w-full justify-start gap-3 ${isCompactMode ? 'btn-primary' : 'btn-ghost border border-base-300'}`}
+                                        onClick={() => setIsCompactMode((current) => !current)}
+                                    >
+                                        <Rows3 className="h-4 w-4 shrink-0" />
+                                        <span>{isCompactMode ? 'Compact style on' : 'Compact style off'}</span>
+                                    </button>
+
                                     <label className="flex flex-col gap-1.5 text-sm text-surface-600">
                                         <span>Theme</span>
                                         <select
