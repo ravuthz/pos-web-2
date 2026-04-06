@@ -373,6 +373,8 @@ export function Layout() {
                                     <BranchSelector fullWidth showMobileLabel />
                                 </div>
 
+                                <div className="divider my-2 md:hidden" />
+
                                 <button
                                     type="button"
                                     className="btn btn-primary w-full justify-start gap-3"

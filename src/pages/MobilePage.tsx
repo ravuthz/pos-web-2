@@ -538,7 +538,7 @@ export function MobilePage() {
 
     return (
         <>
-            <div className="space-y-4 pb-28">
+            <div className="space-y-4 pb-36">
                 {message ? (
                     <div role="alert" className="alert border border-base-300 bg-base-100 text-sm text-base-content shadow-sm">
                         <span>{message}</span>
@@ -721,41 +721,45 @@ export function MobilePage() {
                             )}
                         </section>
 
-                        <div className="sticky bottom-0 z-20 pt-4">
-                            <div className="card border border-base-300 bg-base-100 shadow-lg">
-                                <div className="card-body p-3">
-                                    <div className="grid grid-cols-[1fr_auto_auto] gap-3">
-                                        <input
-                                            id="mobile-order-search"
-                                            className="input input-bordered w-full"
-                                            placeholder="Search product name, code, or barcode"
-                                            value={lookupQuery}
-                                            onChange={(event) => setLookupQuery(event.target.value)}
-                                            onKeyDown={(event) => {
-                                                if (event.key === 'Enter') {
-                                                    event.preventDefault();
-                                                    submitSearchLookup();
-                                                }
-                                            }}
-                                        />
-                                        <button
-                                            type="button"
-                                            className="btn btn-primary btn-square"
-                                            onClick={() => submitSearchLookup()}
-                                            disabled={searchMutation.isPending || lookupQuery.trim().length === 0}
-                                            title="Search products"
-                                        >
-                                            <Search className="h-4 w-4" />
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="btn btn-secondary btn-square"
-                                            onClick={() => void startCameraScanner()}
-                                            disabled={isScannerStarting}
-                                            title="Scan barcode"
-                                        >
-                                            <ScanLine className="h-4 w-4" />
-                                        </button>
+                        <div className="safe-bottom fixed inset-x-0 bottom-0 z-30 pb-4 pt-4">
+                            <div className="container mx-auto">
+                                <div className="w-full">
+                                    <div className="card border border-base-300 bg-base-100/95 shadow-lg backdrop-blur">
+                                        <div className="card-body p-3">
+                                            <div className="grid grid-cols-[1fr_auto_auto] gap-3">
+                                                <input
+                                                    id="mobile-order-search"
+                                                    className="input input-bordered w-full"
+                                                    placeholder="Search product name, code, or barcode"
+                                                    value={lookupQuery}
+                                                    onChange={(event) => setLookupQuery(event.target.value)}
+                                                    onKeyDown={(event) => {
+                                                        if (event.key === 'Enter') {
+                                                            event.preventDefault();
+                                                            submitSearchLookup();
+                                                        }
+                                                    }}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-primary btn-square"
+                                                    onClick={() => submitSearchLookup()}
+                                                    disabled={searchMutation.isPending || lookupQuery.trim().length === 0}
+                                                    title="Search products"
+                                                >
+                                                    <Search className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-secondary btn-square"
+                                                    onClick={() => void startCameraScanner()}
+                                                    disabled={isScannerStarting}
+                                                    title="Scan barcode"
+                                                >
+                                                    <ScanLine className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
