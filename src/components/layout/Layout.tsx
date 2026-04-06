@@ -15,7 +15,6 @@ import {
     Receipt,
     ScanLine,
     ShoppingBag,
-    Smartphone,
     Shuffle,
     Store,
     Truck,
