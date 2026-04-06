@@ -745,7 +745,7 @@ export function MobilePage() {
                         <div className="safe-bottom fixed inset-x-0 bottom-0 z-30 pb-4 pt-4">
                             <div className="container mx-auto">
                                 <div className="w-full">
-                                    <div className="card border border-base-300 bg-base-100/95 shadow-lg backdrop-blur">
+                                    <div className="card shadow-lg backdrop-blur">
                                         <div className="card-body p-3">
                                             <div className="grid grid-cols-[1fr_auto_auto] gap-3">
                                                 <input
