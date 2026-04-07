@@ -5,6 +5,7 @@ import {
     Plus,
     ScanLine,
     Search,
+    Trash2,
     X
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -630,7 +631,7 @@ export function MobilePage() {
                                                         <div className="flex items-center gap-2">
                                                             <button
                                                                 type="button"
-                                                                className="btn btn-secondary btn-sm btn-square"
+                                                                className="btn btn-secondary btn-sm btn-square h-9 w-9 min-h-9"
                                                                 onClick={() => updateQuantity(item.product_id, item.quantity - 1)}
                                                             >
                                                                 <Minus className="h-4 w-4" />
@@ -640,7 +641,7 @@ export function MobilePage() {
                                                             </span>
                                                             <button
                                                                 type="button"
-                                                                className="btn btn-secondary btn-sm btn-square"
+                                                                className="btn btn-secondary btn-sm btn-square h-9 w-9 min-h-9"
                                                                 onClick={() => updateQuantity(item.product_id, item.quantity + 1)}
                                                             >
                                                                 <Plus className="h-4 w-4" />
@@ -649,10 +650,12 @@ export function MobilePage() {
 
                                                         <button
                                                             type="button"
-                                                            className="btn btn-ghost btn-sm"
+                                                            className="btn btn-ghost btn-sm btn-square h-9 w-9 min-h-9"
                                                             onClick={() => confirmRemoveFromCart(item)}
+                                                            title="Remove item"
+                                                            aria-label={`Remove ${item.name}`}
                                                         >
-                                                            Remove
+                                                            <Trash2 className="h-4 w-4" />
                                                         </button>
                                                     </div>
                                                 </div>
