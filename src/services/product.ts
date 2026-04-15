@@ -1,6 +1,32 @@
 import { api } from '@/lib/api';
 import type { Product, ProductListQuery, ProductUnit } from '@/types/api';
 
+type ProductPayloadValue = string | number | boolean | File | null | undefined;
+
+function buildProductFormData(data: Record<string, ProductPayloadValue>) {
+  const formData = new FormData();
+
+  Object.entries(data).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') {
+      return;
+    }
+
+    if (value instanceof File) {
+      formData.append(key, value);
+      return;
+    }
+
+    if (typeof value === 'boolean') {
+      formData.append(key, value ? '1' : '0');
+      return;
+    }
+
+    formData.append(key, String(value));
+  });
+
+  return formData;
+}
+
 export const productService = {
   async getAll(params?: ProductListQuery) {
     const response = await api.get<{ data: Product[]; meta?: any }>('/products', { params });
@@ -22,13 +48,35 @@ export const productService = {
     return response.data.data;
   },
 
-  async create(data: Partial<Product>) {
-    const response = await api.post<{ data: Product }>('/products', data);
+  async create(data: Record<string, ProductPayloadValue>) {
+    const hasImage = data.image instanceof File;
+    const response = await api.post<{ data: Product }>(
+      '/products',
+      hasImage ? buildProductFormData(data) : data,
+      hasImage
+        ? {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        : undefined
+    );
     return response.data.data;
   },
 
-  async update(id: number, data: Partial<Product>) {
-    const response = await api.put<{ data: Product }>(`/products/${id}`, data);
+  async update(id: number, data: Record<string, ProductPayloadValue>) {
+    const hasImage = data.image instanceof File;
+    const payload = hasImage ? buildProductFormData({ ...data, _method: 'PUT' }) : data;
+    const response = await api.request<{ data: Product }>({
+      url: `/products/${id}`,
+      method: hasImage ? 'POST' : 'PUT',
+      data: payload,
+      headers: hasImage
+        ? {
+            'Content-Type': 'multipart/form-data'
+          }
+        : undefined
+    });
     return response.data.data;
   },
 
