@@ -57,6 +57,7 @@ interface BarcodeDetectorConstructor {
 }
 
 const CAMERA_SCAN_FORMATS = ['code_128', 'code_39', 'code_93', 'codabar', 'ean_13', 'ean_8', 'itf', 'upc_a', 'upc_e'];
+const SCAN_RETRY_COOLDOWN_MS = 1500;
 
 function makeIdempotencyKey() {
     if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -108,6 +109,9 @@ export function MobilePage() {
     const streamRef = useRef<MediaStream | null>(null);
     const scanTimeoutRef = useRef<number | null>(null);
     const scannerSessionRef = useRef(0);
+    const isBarcodeLookupPendingRef = useRef(false);
+    const lastDetectedBarcodeRef = useRef<string | null>(null);
+    const scanCooldownUntilRef = useRef(0);
 
     const currentShiftQuery = useQuery({
         queryKey: ['mobile-current-shift', selectedBranchId],
@@ -163,7 +167,7 @@ export function MobilePage() {
             return saleService.searchByBarcode(value.trim(), selectedBranchId);
         },
         onSuccess: (product: Product & { quantity_on_hand?: number; stock?: { quantity_on_hand?: number } | null }) => {
-            addToCart(normalizeProduct(product), { closeSearchModal: true });
+            addToCart(normalizeProduct(product));
             setMessage(null);
         },
         onError: (error) => {
@@ -307,9 +311,27 @@ export function MobilePage() {
             return;
         }
 
-        closeScanner({ resetError: true });
+        const now = Date.now();
+
+        if (
+            isBarcodeLookupPendingRef.current ||
+            (lastDetectedBarcodeRef.current === normalizedValue && scanCooldownUntilRef.current > now)
+        ) {
+            return;
+        }
+
+        isBarcodeLookupPendingRef.current = true;
+        lastDetectedBarcodeRef.current = normalizedValue;
+        scanCooldownUntilRef.current = now + SCAN_RETRY_COOLDOWN_MS;
+
         setLookupQuery(normalizedValue);
-        barcodeMutation.mutate(normalizedValue);
+        setMessage(null);
+        barcodeMutation.mutate(normalizedValue, {
+            onSettled: () => {
+                isBarcodeLookupPendingRef.current = false;
+                scanCooldownUntilRef.current = Date.now() + SCAN_RETRY_COOLDOWN_MS;
+            }
+        });
     }
 
     async function startCameraScanner() {
@@ -409,6 +431,13 @@ export function MobilePage() {
                 }
 
                 try {
+                    if (isBarcodeLookupPendingRef.current) {
+                        scanTimeoutRef.current = window.setTimeout(() => {
+                            void runDetection();
+                        }, 200);
+                        return;
+                    }
+
                     const detections = await detector.detect(activeVideo);
                     const detectedCode = detections
                         .map((detection) => detection.rawValue?.trim())
@@ -416,7 +445,6 @@ export function MobilePage() {
 
                     if (detectedCode) {
                         submitBarcodeLookup(detectedCode);
-                        return;
                     }
                 } catch (error) {
                     setScannerError(getScannerErrorMessage(error));
@@ -826,47 +854,22 @@ export function MobilePage() {
                                 ) : null}
 
                                 {isScannerOpen ? (
-                                    <div className="card border border-base-300 bg-base-100 shadow-sm">
-                                        <div className="card-body gap-4 p-4">
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div>
-                                                    <h3 className="font-medium text-surface-900">Camera scanner</h3>
-                                                    <p className="text-sm text-surface-500">
-                                                        Point the camera at a barcode. The product will be added automatically when it is detected.
-                                                    </p>
-                                                </div>
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-ghost btn-sm btn-square"
-                                                    onClick={() => closeScanner({ resetError: true })}
-                                                    title="Close camera scanner"
-                                                >
-                                                    <X className="h-4 w-4" />
-                                                </button>
-                                            </div>
-
-                                            <div className="relative overflow-hidden rounded-[calc(var(--radius-box)*1.1)] border border-base-300 bg-neutral">
-                                                <video
-                                                    ref={videoRef}
-                                                    className="aspect-video w-full object-cover"
-                                                    autoPlay
-                                                    muted
-                                                    playsInline
-                                                />
-                                                <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
-                                                    <div className="h-24 w-full max-w-xs rounded-[calc(var(--radius-box)*1.1)] border-2 border-primary/80 bg-transparent" />
-                                                </div>
-                                                {isScannerStarting ? (
-                                                    <div className="absolute inset-0 flex items-center justify-center bg-neutral/40 px-6 text-center text-sm font-medium text-neutral-content">
-                                                        Opening camera...
-                                                    </div>
-                                                ) : null}
-                                            </div>
-
-                                            <p className="text-sm text-surface-500">
-                                                Use the rear camera for better focus. When a barcode is detected it will fill the lookup field and add the product automatically.
-                                            </p>
+                                    <div className="relative overflow-hidden rounded-[calc(var(--radius-box)*1.1)] border border-base-300 bg-neutral">
+                                        <video
+                                            ref={videoRef}
+                                            className="aspect-video w-full object-cover"
+                                            autoPlay
+                                            muted
+                                            playsInline
+                                        />
+                                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
+                                            <div className="h-24 w-full max-w-xs rounded-[calc(var(--radius-box)*1.1)] border-2 border-primary/80 bg-transparent" />
                                         </div>
+                                        {isScannerStarting ? (
+                                            <div className="absolute inset-0 flex items-center justify-center bg-neutral/40 px-6 text-center text-sm font-medium text-neutral-content">
+                                                Opening camera...
+                                            </div>
+                                        ) : null}
                                     </div>
                                 ) : null}
 
