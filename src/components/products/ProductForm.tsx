@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Upload, X } from 'lucide-react';
+import { Search, Upload, X } from 'lucide-react';
 import { CRUD_EDITOR_ACTIONS_CLASS, CRUD_EDITOR_FORM_GRID_CLASS } from '@/components/ui/CrudEditorLayout';
 import type { CrudEditorTab } from '@/lib/crudTabs';
 import { resolveAssetUrl } from '@/lib/utils';
 import type { Product, Category, Vendor } from '@/types/api';
+import { ProductImageLightbox } from '@/components/products/ProductImageLightbox';
 
 export interface ProductFormState {
     category_id: string;
@@ -81,6 +82,7 @@ export function ProductForm({ tab, categories, vendors, isSaving, onSubmit, onCa
     const selectClass = 'select select-bordered w-full';
     const textareaClass = 'textarea textarea-bordered min-h-28 w-full';
     const [previewUrl, setPreviewUrl] = useState<string | undefined>(() => resolveAssetUrl(tab.form.current_image));
+    const [isLightboxOpen, setIsLightboxOpen] = useState(false);
 
     useEffect(() => {
         if (tab.form.image) {
@@ -108,15 +110,33 @@ export function ProductForm({ tab, categories, vendors, isSaving, onSubmit, onCa
                 <div className="rounded-box border border-base-300 bg-base-200/40 p-4">
                     <div className="flex flex-col gap-4 md:flex-row md:items-start">
                         <div className="avatar">
-                            <div className="h-28 w-28 rounded-box border border-base-300 bg-base-100">
+                            <button
+                                type="button"
+                                className="group relative h-28 w-28 overflow-hidden rounded-box border border-base-300 bg-base-100 text-left"
+                                onClick={() => {
+                                    if (previewUrl) {
+                                        setIsLightboxOpen(true);
+                                    }
+                                }}
+                                disabled={!previewUrl}
+                                aria-label={previewUrl ? 'Enlarge product image' : 'No product image available'}
+                            >
                                 {previewUrl ? (
-                                    <img src={previewUrl} alt={tab.form.name || 'Product preview'} className="h-full w-full object-cover" />
+                                    <>
+                                        <img src={previewUrl} alt={tab.form.name || 'Product preview'} className="h-full w-full object-cover transition duration-200 group-hover:scale-105" />
+                                        <div className="absolute inset-0 flex items-center justify-center bg-neutral/0 text-white opacity-0 transition group-hover:bg-neutral/35 group-hover:opacity-100">
+                                            <span className="inline-flex items-center gap-1 rounded-full bg-base-100/90 px-2 py-1 text-xs font-medium text-base-content">
+                                                <Search className="h-3.5 w-3.5" />
+                                                Enlarge
+                                            </span>
+                                        </div>
+                                    </>
                                 ) : (
                                     <div className="flex h-full w-full items-center justify-center text-center text-xs text-base-content/50">
                                         No image
                                     </div>
                                 )}
-                            </div>
+                            </button>
                         </div>
 
                         <div className="flex-1 space-y-3">
@@ -155,6 +175,12 @@ export function ProductForm({ tab, categories, vendors, isSaving, onSubmit, onCa
                     </div>
                 </div>
             </fieldset>
+            <ProductImageLightbox
+                open={isLightboxOpen}
+                imageUrl={previewUrl}
+                title={tab.form.name || 'Product image'}
+                onClose={() => setIsLightboxOpen(false)}
+            />
 
             <fieldset className="fieldset">
                 <legend className="fieldset-legend">Category</legend>

@@ -2,6 +2,7 @@ import { useDeferredValue, useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Pencil, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ProductImageLightbox } from '@/components/products/ProductImageLightbox';
 import { ProductForm, emptyProductForm, getProductEditForm, type ProductFormState } from '@/components/products/ProductForm';
 import { CrudEditorLayout } from '@/components/ui/CrudEditorLayout';
 import { CrudTabs } from '@/components/ui/CrudTabs';
@@ -25,6 +26,7 @@ export function ProductsPage() {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(DEFAULT_TABLE_PAGE_SIZE);
     const [lowStockOnly, setLowStockOnly] = useState(false);
+    const [lightboxImage, setLightboxImage] = useState<{ url: string; title: string } | null>(null);
     const deferredSearch = useDeferredValue(search);
     const crudTabs = useCrudTabs<ProductFormState, Product>({
         createEmptyForm: () => ({ ...emptyProductForm }),
@@ -236,8 +238,13 @@ export function ProductsPage() {
                                                 const imageUrl = resolveAssetUrl(product.image ?? product.image_url);
 
                                                 return imageUrl ? (
-                                                    <div className="avatar">
-                                                        <div className="h-12 w-12 rounded-box">
+                                                    <button
+                                                        type="button"
+                                                        className="avatar transition hover:scale-105"
+                                                        title={`Enlarge ${product.name} image`}
+                                                        onClick={() => setLightboxImage({ url: imageUrl, title: product.name })}
+                                                    >
+                                                        <div className="h-12 w-12 rounded-box ring-1 ring-base-300">
                                                             <img
                                                                 src={imageUrl}
                                                                 alt={product.name}
@@ -245,7 +252,7 @@ export function ProductsPage() {
                                                                 loading="lazy"
                                                             />
                                                         </div>
-                                                    </div>
+                                                    </button>
                                                 ) : (
                                                     <div className="avatar placeholder">
                                                         <div className="h-12 w-12 rounded-box bg-base-200 text-[11px] font-medium text-base-content/50">
@@ -335,6 +342,12 @@ export function ProductsPage() {
                     </div>
                 )}
             </CrudTabs>
+            <ProductImageLightbox
+                open={Boolean(lightboxImage)}
+                imageUrl={lightboxImage?.url}
+                title={lightboxImage?.title ?? 'Product image'}
+                onClose={() => setLightboxImage(null)}
+            />
         </div>
     );
 }
