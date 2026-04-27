@@ -14,6 +14,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'robots.txt'],
+      workbox: {
+        navigateFallbackDenylist: [/^\/.*\.php(?:\/|\?|$)/],
+      },
       manifest: {
         name: 'POS System',
         short_name: 'POS',
